@@ -1,0 +1,110 @@
+/* Нова сторінка — довідка про ролі/права, якої не було в оригінальному застосунку. */
+
+.access-none { color: var(--text-muted); }
+
+.access-member {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.access-member-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent-dim);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.perm-matrix { font-size: 13px; }
+.perm-matrix th { white-space: nowrap; }
+.perm-matrix-group td {
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  padding: 6px 20px;
+}
+.perm-matrix td input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+.perm-matrix td input[type="checkbox"]:disabled { cursor: default; opacity: .55; }
+.perm-matrix td.perm-overridden { background: var(--accent-dim); }
+
+/* Desktop — таблиця "дія × роль" (усі ролі колонками), без змін.
+   Mobile — усі ролі поруч не влазять без горизонтального скролу, тож замість
+   таблиці показуємо перемикач ролей (вкладки) + список прав однієї обраної ролі. */
+.perm-matrix-mobile { display: none; }
+
+@media (max-width: 768px) {
+  .perm-matrix-desktop { display: none; }
+  .perm-matrix-mobile { display: block; padding: 12px 16px 16px; }
+}
+
+.perm-role-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 4px;
+  margin-bottom: 8px;
+}
+.perm-role-tab {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all .12s;
+}
+.perm-role-tab.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+
+.perm-role-group { margin-top: 14px; }
+.perm-role-group:first-child { margin-top: 0; }
+.perm-role-group-label {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  padding-bottom: 6px;
+}
+.perm-role-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  cursor: pointer;
+}
+.perm-role-group .perm-role-row:last-child { border-bottom: none; }
+.perm-role-row.perm-overridden { background: var(--accent-dim); margin: 0 -8px; padding: 10px 8px; border-radius: var(--radius-sm); }
+.perm-role-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+.perm-role-row input[type="checkbox"]:disabled { cursor: default; opacity: .55; }

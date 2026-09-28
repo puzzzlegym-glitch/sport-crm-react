@@ -1,0 +1,66 @@
+# Sport CRM — .htaccess
+Options -Indexes
+
+# ── Заборона прихованих файлів ────────────────────────────────
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+# ── Заголовки безпеки ─────────────────────────────────────────
+<IfModule mod_headers.c>
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+    Header unset X-Powered-By
+</IfModule>
+
+# ── Компресія ─────────────────────────────────────────────────
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json
+</IfModule>
+
+# ── Кешування ─────────────────────────────────────────────────
+<IfModule mod_headers.c>
+
+    # JS/CSS з ?v= параметром — кешуємо назавжди (immutable)
+    # URL змінюється при новій версії → браузер завантажує новий файл
+    <FilesMatch "\.(js|css)$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+
+    # Іконки / зображення — кеш на рік
+    <FilesMatch "\.(png|jpg|jpeg|gif|svg|ico|webp)$">
+        Header set Cache-Control "public, max-age=31536000"
+    </FilesMatch>
+
+    # Шрифти — кеш на рік
+    <FilesMatch "\.(woff2?|ttf|eot)$">
+        Header set Cache-Control "public, max-age=31536000"
+    </FilesMatch>
+
+    # manifest.json — кеш на тиждень
+    <FilesMatch "manifest\.json$">
+        Header set Cache-Control "public, max-age=604800"
+    </FilesMatch>
+
+    # sw.js — НЕ кешуємо (браузер має завжди перевіряти оновлення SW)
+    <FilesMatch "sw\.js$">
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+    </FilesMatch>
+
+    # HTML і PHP — НЕ кешуємо (завжди свіжі)
+    <FilesMatch "\.(html|php)$">
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+    </FilesMatch>
+
+</IfModule>
+
+# ── Маршрутизація — все через index.php ──────────────────────
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.html [L]
+</IfModule>

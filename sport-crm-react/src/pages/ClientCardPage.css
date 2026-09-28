@@ -1,0 +1,119 @@
+/* Картка клієнта (повна сторінка /clients/:id) — спільні .card/.stats-grid/.stat-card/
+   .modal-tabs/.modal-tab-btn/.detail-fields-grid/.alert/.empty-state в admin.css */
+
+.ccard-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+.ccard-breadcrumb a { color: var(--text-muted); text-decoration: none; }
+.ccard-breadcrumb a:hover { color: var(--accent); }
+.ccard-breadcrumb span { color: var(--text-primary); font-weight: 500; }
+
+.ccard-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+.ccard-header-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+.ccard-avatar {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-size: 22px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid rgba(79,156,249,.3);
+  flex-shrink: 0;
+}
+.ccard-name-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ccard-name { font-size: 20px; font-weight: 600; }
+.ccard-contact-row {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  margin-top: 8px;
+  font-size: 13px; color: var(--text-secondary);
+}
+.ccard-contact-row span { display: inline-flex; align-items: center; gap: 5px; }
+.ccard-blocked-note { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+
+.ccard-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ccard-stats { margin-bottom: 20px; }
+
+.ccard-tabs { margin-bottom: 20px; }
+
+.ccard-main-grid {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 20px;
+  align-items: start;
+}
+.ccard-main-col { min-width: 0; }
+.ccard-side-col { min-width: 0; }
+
+.ccard-app-tab { max-width: 420px; }
+
+.ccard-invoice-row {
+  display: block;
+  margin: 0 -24px;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--border);
+  color: inherit;
+  text-decoration: none;
+  transition: background .12s;
+}
+.ccard-invoice-row:last-child { border-bottom: none; }
+.ccard-invoice-row:hover { background: var(--bg-elevated); }
+
+@media (max-width: 900px) {
+  .ccard-main-grid { grid-template-columns: 1fr; }
+  .ccard-header { flex-direction: column; }
+  .ccard-header-actions { width: 100%; }
+  .ccard-header-actions .btn { flex: 1; justify-content: center; }
+}
+
+/* ── Панель "Додаток" (DRIVE SPORT HUB) ─────────────────────── */
+.client-app-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.client-app-panel-icon {
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  display: flex; align-items: center; justify-content: center;
+  margin: 4px auto 14px;
+}
+.client-app-panel-title { text-align: center; font-size: 14px; font-weight: 600; }
+.client-app-panel-subtitle { text-align: center; font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+.client-app-panel-features {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.client-app-panel-features li {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12.5px; color: var(--text-secondary);
+}
+.client-app-panel-features li .icon { color: var(--success); flex-shrink: 0; }

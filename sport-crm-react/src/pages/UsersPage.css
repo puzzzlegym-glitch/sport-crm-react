@@ -1,0 +1,170 @@
+/* 1:1 з assets/css/users.css */
+
+.user-avatar {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.user-avatar.owner   { background: rgba(167,139,250,.15); color: #c4b5fd; }
+.user-avatar.manager { background: rgba(52,211,153,.12);  color: var(--success); }
+.user-avatar.trainer { background: rgba(251,191,36,.12);  color: var(--warning); }
+
+.user-info  { display: flex; align-items: center; gap: 10px; }
+.user-name  { font-weight: 500; font-size: 14px; }
+.user-email { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+
+.page-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+.page-tab-btn {
+  padding: 10px 18px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color .12s, border-color .12s;
+}
+.page-tab-btn.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.limit-warning {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: rgba(251,191,36,.08);
+  border: 1px solid rgba(251,191,36,.25);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--warning);
+  margin-bottom: 16px;
+}
+
+@media (max-width: 768px) {
+  .page-tabs { gap: 0; }
+  .page-tab-btn {
+    flex: 1;
+    padding: 10px 8px;
+    font-size: 12px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+/* ── Компоненти зарплати (модалка налаштувань) ──────────── */
+.salary-components {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.salary-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  transition: border-color .15s, background .15s;
+}
+.salary-row:has(input[type="checkbox"]:checked) {
+  border-color: var(--accent);
+  background: rgba(79,156,249,.06);
+}
+.salary-check-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  user-select: none;
+}
+.salary-row:has(input[type="checkbox"]:checked) .salary-check-label {
+  color: var(--text-primary);
+}
+.salary-check-label input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  flex-shrink: 0;
+  margin: 0;
+}
+.salary-label-icon { display: flex; align-items: center; color: var(--text-muted); flex-shrink: 0; }
+.salary-row:has(input[type="checkbox"]:checked) .salary-label-icon { color: var(--accent); }
+.salary-input-wrap { display: flex; align-items: center; gap: 5px; }
+.salary-amount-input { width: 110px; text-align: right; font-size: 13px; }
+.salary-amount-input:disabled { opacity: .3; pointer-events: none; }
+.salary-unit { font-size: 12px; color: var(--text-muted); white-space: nowrap; min-width: 24px; }
+.salary-hint { font-size: 11px; color: var(--text-muted); margin: -4px 0 2px 26px; }
+.salary-sub-row { display: flex; align-items: center; gap: 8px; margin: -4px 0 2px 26px; }
+.salary-sub-row label { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+.salary-plan-fields { display: flex; gap: 8px; margin: -4px 0 2px 26px; }
+
+/* Payroll */
+.payroll-filter-bar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.payroll-filter-bar select,
+.payroll-filter-bar input[type="month"] {
+  flex: 1;
+  min-width: 140px;
+  max-width: 220px;
+}
+.payroll-summary-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.pr-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 18px;
+  text-align: center;
+}
+.pr-card-val { font-size: 18px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+.pr-card-val.success { color: var(--success); }
+.pr-card-val.warning { color: var(--warning); }
+.pr-card-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .4px; }
+
+.pr-preview-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  padding: 4px 0;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 768px) {
+  .payroll-summary-cards { grid-template-columns: repeat(2, 1fr); }
+  .payroll-filter-bar select,
+  .payroll-filter-bar input[type="month"] { max-width: 100%; }
+}

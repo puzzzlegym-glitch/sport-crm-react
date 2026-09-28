@@ -1,0 +1,201 @@
+/* 1:1 з assets/css/visits.css */
+
+.scan-block {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 28px 32px;
+  margin-bottom: 24px;
+  text-align: center;
+}
+.scan-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+.scan-input-wrap {
+  display: flex;
+  gap: 10px;
+  max-width: 600px;
+  margin: 0 auto;
+  align-items: stretch;
+}
+.scan-input {
+  flex: 1;
+  font-size: 20px !important;
+  font-weight: 600;
+  text-align: center;
+  letter-spacing: 2px;
+  padding: 14px 16px !important;
+  border: 2px solid var(--border) !important;
+  border-radius: var(--radius-md) !important;
+  transition: border-color .15s, box-shadow .15s !important;
+}
+.scan-input:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px rgba(79,156,249,.15) !important;
+  outline: none;
+}
+.scan-input::placeholder { font-size: 15px; letter-spacing: 0; font-weight: 400; }
+
+.scan-hint { font-size: 12px; color: var(--text-muted); margin-top: 10px; }
+.scan-hint strong { color: var(--accent); }
+
+.scan-result { margin-top: 20px; }
+.scan-result-card {
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  text-align: left;
+  animation: scanIn .25s ease;
+}
+@keyframes scanIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.scan-result-card.success { background: rgba(52,211,153,.1); border: 1px solid rgba(52,211,153,.3); }
+.scan-result-card.warning { background: rgba(251,191,36,.08); border: 1px solid rgba(251,191,36,.3); }
+.scan-result-card.error   { background: rgba(248,113,113,.08); border: 1px solid rgba(248,113,113,.3); }
+.scan-result-card.already { background: rgba(79,156,249,.08); border: 1px solid rgba(79,156,249,.25); }
+
+.scan-avatar {
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; font-weight: 700;
+  color: var(--accent);
+  flex-shrink: 0;
+  border: 2px solid rgba(79,156,249,.3);
+  overflow: hidden;
+}
+.scan-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.scan-client-name { font-size: 18px; font-weight: 700; margin-bottom: 2px; }
+.scan-client-sub  { font-size: 13px; color: var(--text-secondary); margin-bottom: 4px; }
+.scan-check-icon  { margin-left: auto; font-size: 36px; flex-shrink: 0; }
+.scan-warning {
+  font-size: 12px;
+  margin-top: 6px;
+  padding: 5px 10px;
+  background: rgba(251,191,36,.12);
+  border-radius: var(--radius-sm);
+  color: var(--warning);
+  display: inline-block;
+}
+
+.visit-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+.visit-row:last-child { border-bottom: none; }
+.visit-avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-size: 13px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.visit-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.visit-name  { font-weight: 500; }
+.visit-sub   { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+.visit-time  { font-size: 13px; color: var(--text-secondary); margin-left: auto; flex-shrink: 0; }
+.visit-method-badge { font-size: 10px; padding: 1px 6px; border-radius: 10px; text-transform: uppercase; letter-spacing: .3px; }
+.visit-method-badge.barcode { background: rgba(52,211,153,.12); color: var(--success); }
+.visit-method-badge.manual  { background: rgba(79,156,249,.12);  color: var(--accent); }
+.visit-method-badge.admin   { background: rgba(167,139,250,.12); color: #c4b5fd; }
+
+.visit-del-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px; height: 22px;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .15s, background .15s, color .15s;
+  flex-shrink: 0;
+  padding: 0;
+}
+.visit-row:hover .visit-del-btn { opacity: 1; }
+.visit-del-btn:hover { background: rgba(248,113,113,.15); color: var(--danger); }
+
+.vst-layout {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+.vst-left  { display: flex; flex-direction: column; gap: 12px; }
+.vst-right { min-height: 400px; }
+
+.vst-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.vst-stat {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  text-align: center;
+}
+.vst-stat-val        { font-size: 24px; font-weight: 700; color: var(--text-primary); line-height: 1.1; }
+.vst-stat-val.accent { color: var(--accent); }
+.vst-stat-val.success{ color: var(--success); }
+.vst-stat-lbl        { font-size: 11px; color: var(--text-muted); margin-top: 3px; text-transform: uppercase; letter-spacing: .4px; }
+
+.vst-jrn-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+
+.jrn-group { border-bottom: 1px solid var(--border); }
+.jrn-group:last-child { border-bottom: none; }
+.jrn-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  user-select: none;
+  transition: color .15s;
+}
+.jrn-group-head:hover { color: var(--text-primary); }
+.jrn-group-arrow { font-size: 16px; transition: transform .2s; display: inline-block; }
+.jrn-group-body { display: none; padding-bottom: 4px; }
+.jrn-group.open .jrn-group-body  { display: block; }
+.jrn-group.open .jrn-group-arrow { transform: rotate(90deg); }
+
+@media (max-width: 900px) {
+  .vst-layout { grid-template-columns: 1fr; }
+  .scan-block  { padding: 18px 16px; margin-bottom: 0; }
+}
+
+@media (max-width: 480px) {
+  .scan-block { padding: 16px 12px; }
+  .scan-input { font-size: 16px !important; padding: 13px 14px !important; }
+  .scan-result-card { padding: 14px 16px; gap: 12px; }
+  .scan-avatar { width: 44px; height: 44px; font-size: 17px; }
+  .scan-check-icon { font-size: 26px; }
+  .vst-stat-val { font-size: 20px; }
+  .visit-row { gap: 10px; padding: 9px 0; }
+  .visit-avatar { width: 32px; height: 32px; font-size: 12px; }
+  .visit-name { font-size: 13px; }
+  .visit-sub  { font-size: 11px; }
+  .visit-time { font-size: 12px; }
+  .visit-method-badge { font-size: 9px; padding: 1px 5px; }
+  .visit-del-btn { opacity: 1; }
+}

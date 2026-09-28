@@ -1,0 +1,277 @@
+/* ============================================================
+   clients.css
+   ============================================================ */
+
+/* ── Toolbar ─────────────────────────────────────────────── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 180px;
+  max-width: 360px;
+}
+.search-wrap input { padding-left: 36px; }
+.search-icon {
+  position: absolute;
+  left: 11px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 14px;
+  pointer-events: none;
+}
+.filter-select { width: auto; min-width: 130px; }
+
+/* ── Таблиця клієнтів ────────────────────────────────────── */
+.client-avatar {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-size: 13px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid rgba(79,156,249,.3);
+}
+.client-info  { display: flex; align-items: center; gap: 10px; }
+.client-name  { font-weight: 500; font-size: 14px; }
+.client-phone { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+
+.tariff-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 11px; font-weight: 500;
+  background: var(--accent-dim);
+  color: var(--accent);
+  max-width: 160px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.tariff-expire         { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.tariff-expire.soon    { color: var(--warning); }
+.tariff-expire.expired { color: var(--danger); }
+
+/* ── Пагінація ───────────────────────────────────────────── */
+.pagination {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  padding: 16px 0 0;
+  font-size: 13px; color: var(--text-secondary);
+  flex-wrap: wrap; gap: 12px;
+}
+.pagination-btns { display: flex; gap: 4px; }
+.page-btn {
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: none; cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 13px; font-family: inherit;
+  transition: all .12s;
+}
+.page-btn:hover:not(:disabled) { background: var(--bg-hover); color: var(--text-primary); }
+.page-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.page-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ── Форма клієнта (модалка додати/редагувати) ───────────── */
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 16px;
+}
+
+/* ── Вкладки у модалці ───────────────────────────────────── */
+.modal-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.modal-tabs::-webkit-scrollbar { display: none; }
+.modal-tab-btn {
+  padding: 9px 14px;
+  border: none; background: none;
+  color: var(--text-secondary);
+  font-size: 13px; font-family: inherit;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color .12s, border-color .12s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.modal-tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+.modal-tab-content        { display: none; }
+.modal-tab-content.active { display: block; }
+
+/* ── Картка перегляду клієнта ────────────────────────────── */
+.modal-view-card {
+  display: flex;
+  flex-direction: column;
+  max-height: 92vh;
+  padding: 0;
+  overflow: hidden;
+  /* на мобільному — повна висота */
+  width: 100%;
+}
+.view-card-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px 12px;
+  -webkit-overflow-scrolling: touch;
+}
+.view-card-footer {
+  padding: 14px 24px 20px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-surface);
+  flex-shrink: 0;
+}
+
+/* ── Шапка картки ────────────────────────────────────────── */
+.client-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.client-detail-avatar {
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-size: 20px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid rgba(79,156,249,.3);
+  flex-shrink: 0;
+}
+.view-client-name { font-size: 17px; font-weight: 600; line-height: 1.3; }
+
+/* ── Поля деталей — ЗАВЖДИ 2 колонки ────────────────────── */
+.detail-fields-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 20px;
+}
+.detail-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+}
+.detail-field:last-child { border-bottom: none; }
+.detail-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+.detail-value { font-size: 14px; color: var(--text-primary); word-break: break-word; }
+
+/* ── Скрол вкладки ───────────────────────────────────────── */
+.view-tab-scroll {
+  max-height: 320px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Кнопки дій ──────────────────────────────────────────── */
+.client-actions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.client-actions-grid .btn {
+  justify-content: center;
+  font-size: 13px;
+  padding: 10px 8px;
+  white-space: nowrap;
+}
+
+/* ── Мобільна адаптація ──────────────────────────────────── */
+@media (max-width: 600px) {
+
+  /* Модалка — звичайна центрована, не прибита до низу */
+  .modal-view-card {
+    max-height: 90vh;
+    margin: auto;
+    border-radius: var(--radius-md);
+  }
+
+  .view-card-body  { padding: 16px 16px 8px; }
+  .view-card-footer{
+    padding: 12px 16px 16px;
+    overflow-y: auto;
+    max-height: 280px;   /* щоб всі кнопки були доступні при скролі */
+  }
+
+  /* Шапка компактніша */
+  .client-detail-header { gap: 12px; margin-bottom: 16px; padding-bottom: 14px; }
+  .client-detail-avatar { width: 44px; height: 44px; font-size: 17px; }
+  .view-client-name     { font-size: 15px; }
+
+  /* Поля — 2 колонки залишаємо */
+  .detail-fields-grid { gap: 0 12px; }
+  .detail-field       { padding: 7px 0; }
+  .detail-label       { font-size: 9px; }
+  .detail-value       { font-size: 13px; }
+
+  /* Вкладка scroll менша */
+  .view-tab-scroll { max-height: 200px; }
+
+  /* Кнопки дій */
+  .client-actions-grid .btn { font-size: 12px; padding: 9px 6px; }
+
+  /* Форма редагування — 2 колонки */
+  .form-row { grid-template-columns: 1fr 1fr; gap: 0 10px; }
+}
+
+@media (max-width: 380px) {
+  .form-row { grid-template-columns: 1fr; }
+}
+
+/* ── Мобільна картка клієнта ──────────────────────────── */
+.client-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: background .1s;
+}
+.client-card:hover { background: var(--bg-hover); }
+.client-card-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.client-avatar-sm {
+  width: 36px; height: 36px; flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+}
+.client-card-body  { flex: 1; min-width: 0; }
+.client-card-name  { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.client-card-phone { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+.client-card-right {
+  display: flex; flex-direction: column;
+  align-items: flex-end; gap: 4px; flex-shrink: 0;
+}
+.client-card-balance { font-size: 12px; color: var(--text-secondary); }
+.client-card-actions { display: flex; gap: 2px; }

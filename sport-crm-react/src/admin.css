@@ -1,0 +1,1263 @@
+/* ============================================================
+   Sport CRM — Головні стилі адмін-панелі
+   Тема: темна, мінімалістична, профі
+   Шрифт: DM Sans (Google Fonts)
+   ============================================================ */
+
+/* ── Змінні ─────────────────────────────────────────────────── */
+:root {
+  /* Кольори фону */
+  --bg-base:       #0b0d14;   /* найтемніший фон сторінки */
+  --bg-surface:    #131722;   /* карток, сайдбару */
+  --bg-elevated:   #1c2130;   /* модалок, дропдаунів */
+  --bg-hover:      #232940;   /* hover стан */
+
+  /* Межі */
+  --border:        #252d40;
+  --border-light:  #2e3850;
+
+  /* Текст */
+  --text-primary:  #e8ecf4;
+  --text-secondary:#8b95b0;
+  --text-muted:    #515d7a;
+
+  /* Акценти */
+  --accent:        #4f9cf9;   /* синій — основний */
+  --accent-hover:  #3d8bef;
+  --accent-dim:    rgba(79,156,249,.12);
+
+  --success:       #34d399;
+  --warning:       #fbbf24;
+  --danger:        #f87171;
+  --info:          #60a5fa;
+
+  /* Розміри */
+  --sidebar-w:     240px;
+  --header-h:      60px;
+  --radius-sm:     6px;
+  --radius-md:     10px;
+  --radius-lg:     14px;
+
+  /* Тіні (тонкі, без яскравості) */
+  --shadow-sm:     0 1px 3px rgba(0,0,0,.4);
+  --shadow-md:     0 4px 16px rgba(0,0,0,.5);
+}
+
+/* ── Скидання та базові стилі ───────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 15px; scroll-behavior: smooth; }
+
+body {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: var(--accent-hover); }
+
+/* ── Утиліти ────────────────────────────────────────────────── */
+.text-muted    { color: var(--text-muted); }
+.text-secondary{ color: var(--text-secondary); }
+.text-success  { color: var(--success); }
+.text-danger   { color: var(--danger); }
+.text-warning  { color: var(--warning); }
+.text-accent   { color: var(--accent); }
+
+/* ── LAYOUT: Header + Sidebar + Content ─────────────────────── */
+.app-layout {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 1fr;
+  grid-template-rows: var(--header-h) 1fr;
+  grid-template-areas:
+    "sidebar header"
+    "sidebar main";
+  min-height: 100vh;
+}
+
+/* ── HEADER ─────────────────────────────────────────────────── */
+.app-header {
+  grid-area: header;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.header-subtitle {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+#burger-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 8px;
+  line-height: 1;
+  order: -1;
+  flex-shrink: 0;
+}
+#burger-btn:hover { background: var(--bg-hover); }
+
+.header-club-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color .15s;
+}
+.header-club-badge:hover { border-color: var(--accent); }
+
+.header-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.header-bell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: none;
+  border-radius: 50%;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.header-bell:hover { background: var(--bg-hover); color: var(--text-secondary); }
+.header-bell.header-bell-active,
+.header-bell.header-bell-active:hover { color: var(--warning); }
+.header-bell-dot {
+  position: absolute;
+  top: 5px; right: 6px;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--warning);
+  border: 2px solid var(--bg-surface);
+}
+
+.avatar {
+  width: 32px; height: 32px;
+  background: var(--accent-dim);
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+
+/* ── SIDEBAR ─────────────────────────────────────────────────── */
+.app-sidebar {
+  grid-area: sidebar;
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.app-sidebar::-webkit-scrollbar { width: 6px; }
+.app-sidebar::-webkit-scrollbar-track { background: transparent; }
+.app-sidebar::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+.app-sidebar::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+.sidebar-logo {
+  height: var(--header-h);
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -.5px;
+  color: var(--text-primary);
+  text-decoration: none;
+  flex-shrink: 0;
+}
+.sidebar-logo span { color: var(--accent); margin-left: 4px; }
+
+.sidebar-section {
+  padding: 20px 12px 8px;
+}
+.sidebar-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 0 8px;
+  margin-bottom: 4px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 14px;
+  text-decoration: none;
+  transition: background .12s, color .12s;
+  cursor: pointer;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+}
+.nav-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+.nav-item.active { background: var(--accent-dim); color: var(--accent); }
+.nav-item.active .nav-icon { color: var(--accent); }
+
+.nav-icon {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sidebar-bottom {
+  margin-top: auto;
+  padding: 12px;
+  border-top: 1px solid var(--border);
+}
+
+/* ── MAIN CONTENT ────────────────────────────────────────────── */
+.app-main {
+  grid-area: main;
+  padding: 28px;
+  overflow-y: auto;
+}
+
+.page-header {
+  margin-bottom: 28px;
+}
+.page-title {
+  font-size: 22px;
+  font-weight: 600;
+}
+.page-subtitle {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+/* ── КАРТКИ ──────────────────────────────────────────────────── */
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+}
+.card-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+/* ── STAT КАРТКИ (для дашборду) ─────────────────────────────── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
+}
+.stat-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+}
+.stat-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; }
+.stat-value { font-size: 28px; font-weight: 700; margin: 6px 0 4px; }
+.stat-delta { font-size: 12px; color: var(--text-secondary); }
+.stat-delta.up   { color: var(--success); }
+.stat-delta.down { color: var(--danger); }
+
+/* ── ТАБЛИЦЯ ─────────────────────────────────────────────────── */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+thead tr { border-bottom: 1px solid var(--border-light); }
+th {
+  text-align: left;
+  padding: 10px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-primary);
+  vertical-align: middle;
+}
+tbody tr:hover { background: var(--bg-hover); }
+tbody tr:last-child td { border-bottom: none; }
+button.table-details-btn { display: none; }
+.btn-label-mobile { display: none; }
+.table-mobile-linebreak { display: none; }
+/* Показати різну розмітку дій для десктопу/мобільного в одному render() колонки Table.jsx
+   (напр. окремі кнопки на десктопі, CardMenu "⋮" на мобільному) */
+.mobile-only-actions { display: none; }
+
+/* ── ФОРМИ ───────────────────────────────────────────────────── */
+.form-group { margin-bottom: 18px; }
+label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+input[type="password"],
+input[type="number"],
+input[type="date"],
+input[type="url"],
+select,
+textarea {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--bg-base);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color .15s;
+  -webkit-appearance: none;
+}
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+input::placeholder { color: var(--text-muted); }
+textarea { resize: vertical; min-height: 80px; }
+
+.field-error {
+  color: var(--danger);
+  font-size: 12px;
+  margin-top: 5px;
+}
+
+/* ── Телефон з фіксованим кодом країни ──────────────────────── */
+.phone-input-wrap {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--bg-base);
+  transition: border-color .15s, box-shadow .15s;
+}
+.phone-input-wrap:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+.phone-input-wrap.has-error { border-color: var(--danger); }
+.phone-prefix {
+  display: flex;
+  align-items: center;
+  padding: 0 10px 0 14px;
+  font-size: 14px;
+  color: var(--text-muted);
+  border-right: 1px solid var(--border-light);
+  user-select: none;
+}
+.phone-input-wrap input[type="tel"] {
+  border: none;
+  background: none;
+  box-shadow: none !important;
+  padding-left: 8px;
+}
+
+/* ── Іконка календаря для темної теми ───────────────────────── */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.7) brightness(1.5);
+  cursor: pointer;
+  opacity: .7;
+}
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+/* ── КНОПКИ ──────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 18px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  transition: background .15s, opacity .15s;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.btn-primary  { background: var(--accent);     color: #fff; }
+.btn-primary:hover  { background: var(--accent-hover); color: #fff; }
+
+.btn-success  { background: #1e6e4e;  color: var(--success); }
+.btn-success:hover  { background: #18573e; }
+
+.btn-danger   { background: #4a1f1f;  color: var(--danger); }
+.btn-danger:hover   { background: #3e1818; }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-light);
+}
+.btn-ghost:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+.btn-lg { padding: 12px 28px; font-size: 15px; }
+
+/* ── Спільні: поле з іконкою-префіксом, лічильник к-сті, підсумок продажу ── */
+.input-icon-wrap { position: relative; display: block; }
+.input-icon-wrap .input-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.input-icon-wrap input { padding-left: 38px; }
+
+.qty-control { display: flex; align-items: center; gap: 8px; }
+.qty-btn {
+  width: 32px; height: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: none; cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 16px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .1s;
+}
+.qty-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+.qty-input { width: 60px !important; text-align: center; }
+
+.sell-summary {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  margin: 12px 0;
+}
+.sell-summary-row { display: flex; justify-content: space-between; font-size: 14px; padding: 4px 0; }
+.sell-summary-row.total {
+  font-weight: 700;
+  font-size: 17px;
+  padding-top: 10px;
+  margin-top: 6px;
+  border-top: 1px solid var(--border);
+  color: var(--accent);
+}
+
+/* ── БАДЖІ ───────────────────────────────────────────────────── */
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .3px;
+}
+.badge-active  { background: rgba(52,211,153,.15); color: var(--success); }
+.badge-inactive{ background: rgba(248,113,113,.12); color: var(--danger); }
+.badge-pending { background: rgba(251,191,36,.12);  color: var(--warning); }
+.badge-info    { background: rgba(96,165,250,.12);  color: var(--info); }
+
+/* Ролі */
+.badge-superadmin { background: rgba(248,113,113,.15); color: var(--danger); }
+.badge-owner      { background: rgba(167,139,250,.15); color: #c4b5fd; }
+.badge-manager    { background: rgba(52,211,153,.12);  color: var(--success); }
+.badge-trainer    { background: rgba(251,191,36,.12);  color: var(--warning); }
+
+/* ── ЛОАДЕР ──────────────────────────────────────────────────── */
+.loader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: var(--text-muted);
+  font-size: 14px;
+  gap: 10px;
+}
+.spinner {
+  width: 18px; height: 18px;
+  border: 2px solid var(--border-light);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── ПУСТІ СТАНИ ─────────────────────────────────────────────── */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-muted);
+}
+.empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+.empty-state h3 { font-size: 16px; color: var(--text-secondary); margin-bottom: 8px; }
+.empty-state p { font-size: 14px; margin-bottom: 20px; }
+
+/* ── ALERT ───────────────────────────────────────────────────── */
+.alert {
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+.alert-error   { background: rgba(248,113,113,.1);  border: 1px solid rgba(248,113,113,.3); color: var(--danger); }
+.alert-success { background: rgba(52,211,153,.1);   border: 1px solid rgba(52,211,153,.3); color: var(--success); }
+.alert-info    { background: rgba(96,165,250,.1);   border: 1px solid rgba(96,165,250,.3); color: var(--info); }
+
+/* ── МОДАЛКИ ─────────────────────────────────────────────────── */
+.modal-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.6);
+  backdrop-filter: blur(3px);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal-title {
+  font-size: 17px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+.modal-close {
+  position: absolute;
+  top: 16px; right: 16px;
+  width: 28px; height: 28px;
+  background: var(--bg-elevated);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-close:hover { color: var(--text-primary); }
+
+/* Вкладки модалки перегляду запису (клієнт/клуб/абонемент/…) — єдиний варіант для всього застосунку */
+.modal-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.modal-tabs::-webkit-scrollbar { display: none; }
+.modal-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border: none; background: none;
+  color: var(--text-secondary);
+  font-size: 13px; font-family: inherit; font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color .12s, border-color .12s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.modal-tab-btn:hover  { color: var(--text-primary); }
+.modal-tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* Фіксована висота вмісту вкладки — перемикання вкладок не "танцює" розміром модалки */
+.modal-tab-body {
+  height: 340px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+@media (max-width: 768px) {
+  .modal-tab-body { height: min(340px, 50vh); }
+}
+
+/* Календар відвідувань клієнта (карточка клієнта, вкладка "Відвідування") */
+.visits-calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.visits-calendar-title {
+  font-size: 13px;
+  font-weight: 500;
+}
+.visits-calendar-count { color: var(--text-muted); font-weight: 400; }
+.visits-calendar-nav {
+  width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.visits-calendar-nav:hover { background: var(--bg-hover); color: var(--text-primary); }
+.visits-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.visits-calendar-weekday {
+  text-align: center;
+  font-size: 10px;
+  color: var(--text-muted);
+  padding-bottom: 3px;
+}
+.visits-calendar-day {
+  position: relative;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: default;
+}
+.visits-calendar-day.has-visit {
+  color: var(--text-primary);
+  cursor: pointer;
+  background: var(--bg-hover);
+}
+.visits-calendar-day.has-visit:hover { background: var(--accent-dim); }
+.visits-calendar-day.is-today { box-shadow: inset 0 0 0 1px var(--border-light); }
+.visits-calendar-day.is-selected { background: var(--accent-dim); color: var(--accent); }
+.visits-calendar-dot {
+  position: absolute;
+  bottom: 3px;
+  width: 3px; height: 3px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.visits-calendar-day.is-selected .visits-calendar-dot { background: var(--accent); }
+.visits-calendar-details {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  max-height: 60px;
+  overflow-y: auto;
+}
+.visits-calendar-detail-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  padding: 4px 0;
+}
+
+/* Поля запису "мітка: значення" — єдина верстка для карток перегляду (клієнт/клуб/абонемент/товар/прихід) */
+.detail-fields-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 20px;
+}
+.detail-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+}
+.detail-field:last-child, .detail-field:nth-last-child(2):nth-child(odd) { border-bottom: none; }
+.detail-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+.detail-value { font-size: 14px; color: var(--text-primary); word-break: break-word; }
+
+.detail-rows { display: flex; flex-direction: column; }
+.detail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  font-size: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.detail-row:last-child { border-bottom: none; }
+.detail-row-label { color: var(--text-secondary); font-size: 13px; flex-shrink: 0; }
+.detail-row-value { text-align: right; word-break: break-word; }
+
+/* ── АДАПТИВ ─────────────────────────────────────────────────── */
+
+/* Планшет — вузький сайдбар */
+@media (max-width: 1024px) {
+  :root { --sidebar-w: 200px; }
+  .app-main   { padding: 20px; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}
+
+/* Мобільний */
+@media (max-width: 768px) {
+  :root { --header-h: 56px; }
+
+  .app-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: var(--header-h) 1fr;
+    grid-template-areas:
+      "header"
+      "main";
+  }
+
+  #burger-btn {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Header — без переповнення */
+  .app-header {
+    padding: 0 12px;
+    overflow: hidden;
+    gap: 8px;
+  }
+  .header-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .header-club-badge {
+    min-width: 0;
+    max-width: 140px;
+    overflow: hidden;
+  }
+  .header-club-badge #active-club-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: block;
+  }
+  .header-user #user-name { display: none; } /* ховаємо ім'я, лишаємо аватар */
+
+  /* Сайдбар — фіксований слайдер */
+  .app-sidebar {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 260px; height: 100vh;
+    z-index: 200;
+    box-shadow: 4px 0 24px rgba(0,0,0,.6);
+  }
+
+  /* Overlay під сайдбаром */
+  .sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.6);
+    z-index: 199;
+  }
+  .sidebar-overlay.open { display: block; }
+
+  .app-main    { padding: 16px; }
+  .page-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .stats-grid  { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat-value  { font-size: 22px; }
+
+  /* Модалки — центровані */
+  .modal-overlay { align-items: center; padding: 16px; }
+  .detail-fields-grid { grid-template-columns: 1fr; }
+  .detail-field { border-bottom: 1px solid var(--border) !important; }
+
+  /* Таблиці — горизонтальний скрол */
+  .table-wrap       { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table-wrap table { min-width: 600px; }
+
+  .card { border-radius: var(--radius-md); }
+}
+
+/* Малий мобільний */
+@media (max-width: 480px) {
+  .stats-grid  { grid-template-columns: 1fr; }
+  .stat-card   { padding: 14px 16px; }
+  .page-title  { font-size: 20px; }
+  .btn         { padding: 8px 14px; font-size: 13px; }
+  .btn-sm      { padding: 5px 10px; font-size: 11px; }
+  .form-group label { font-size: 12px; }
+  input, select, textarea { font-size: 15px; } /* запобігає зуму iOS */
+}
+
+/* JS-клас відкриття сайдбару */
+.app-sidebar.mobile-open { display: flex !important; }
+
+/* ═══════════════════════════════════════════════════════════
+   МОБІЛЬНІ ТАБЛИЦІ — компактні картки замість горизонтального скролу.
+   Картка = 2 рядки: (1) заголовок + статус(cardTop) + дії-іконки,
+   (2) другорядні поля (mobile:'secondary') через "•" + значення
+   праворуч (mobile:'trailing', напр. дата/сума). Колонки без цих
+   прапорців на мобільному просто не показуються (лишаються на
+   десктопі) — деталі відкриваються тапом по картці.
+   Сторінка може відмовитись від карткового вигляду класом
+   .table-wrap.no-mobile-cards (напр. матриця прав AccessPage).
+   ═══════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+
+  /* Контейнер таблиці — знімаємо overflow щоб картки не обрізались */
+  .table-wrap {
+    overflow-x: visible !important;
+  }
+  .table-wrap table {
+    min-width: unset !important;
+    width: 100% !important;
+  }
+
+  /* Ховаємо шапку таблиці */
+  .table-wrap thead {
+    display: none !important;
+  }
+
+  /* Кожен рядок — компактна картка */
+  .table-wrap tbody tr {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    row-gap: 4px !important;
+    background: var(--bg-surface) !important;
+    border: 1px solid var(--border) !important;
+    border-left: 3px solid var(--card-accent, var(--border)) !important;
+    border-radius: var(--radius-md) !important;
+    margin-bottom: 8px !important;
+    padding: 10px 12px !important;
+    cursor: pointer;
+    transition: border-color .12s, background .12s;
+  }
+  .table-wrap tbody tr:active {
+    background: var(--bg-hover) !important;
+  }
+  .table-wrap tbody tr:last-child {
+    margin-bottom: 0 !important;
+  }
+
+  /* Скидаємо базові рамки клітинок під картковий вигляд */
+  .table-wrap tbody td {
+    display: block !important;
+    padding: 0 !important;
+    border: none !important;
+    font-size: 12px !important;
+  }
+
+  /* Рядок 1: заголовок (1-ша колонка). flex-basis:0 — щоб довгий заголовок
+     не "видавлював" бейдж/дії на 2-й рядок: він завжди стискається першим
+     (перевіряти overflow:hidden на дочірніх елементах рендера колонки,
+     якщо заголовок — не звичайний текст, а власна розмітка). */
+  .table-wrap tbody td:first-child {
+    order: 1;
+    flex: 1 1 0 !important;
+    width: auto !important;
+    min-width: 0;
+    overflow: hidden;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    color: var(--text-primary) !important;
+  }
+  /* Заголовок — звичайний текст (не вкладена розмітка): ельліпсис в один рядок */
+  .table-wrap tbody td:first-child.table-mobile-title-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* ...бейдж статусу (cardTop) */
+  .table-wrap tbody td.table-card-top-cell {
+    order: 2;
+    flex: 0 0 auto !important;
+    width: auto !important;
+    margin-left: 8px !important;
+  }
+  /* ...дії — компактні квадратні іконки, не блок на всю ширину */
+  .table-wrap tbody td.table-actions-cell {
+    order: 3;
+    flex: 0 0 auto !important;
+    width: auto !important;
+    display: flex !important;
+    gap: 4px !important;
+    margin-left: 8px !important;
+  }
+  .table-wrap tbody td.table-actions-cell .btn,
+  .table-wrap tbody td.table-actions-cell .confirm-btn {
+    flex: 0 0 auto;
+    width: 26px;
+    height: 26px;
+    min-height: 0;
+    padding: 0 !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  /* Текстовий підпис поряд з іконкою/емодзі в кнопці дій (не обгорнутий у .btn-label-mobile,
+     бо той на десктопі теж лишає лише іконку) — тут підпис на десктопі видимий, ховаємо
+     тільки в компактній мобільній картці. НЕ чіпає сам символ іконки/емодзі. */
+  .table-wrap tbody td.table-actions-cell .action-label-text {
+    display: none !important;
+  }
+  /* Перемикач розмітки дій (лише для колонок, що явно позначають обидва варіанти):
+     десктопні окремі кнопки (.desktop-only-actions) ховаємо, мобільний CardMenu "⋮" (.mobile-only-actions) показуємо.
+     Інші сторінки, що не використовують ці класи, це правило не зачіпає. */
+  .table-wrap tbody td.table-actions-cell .mobile-only-actions {
+    display: flex !important;
+  }
+  .table-wrap tbody td.table-actions-cell .desktop-only-actions {
+    display: none !important;
+  }
+  /* Картка вже тапабельна цілком (onRowClick) — окрема кнопка "Деталі" не потрібна */
+  .table-wrap tbody .table-details-btn {
+    display: none !important;
+  }
+  .table-wrap tbody td.table-actions-cell .btn-label-mobile {
+    display: none !important;
+  }
+
+  /* Примусовий розрив рядка перед мета-полями: сам по собі ширини 100% контейнера,
+     тож будь-що після нього в порядку flex вже не влазить у рядок 1 і йде на новий рядок,
+     навіть якщо рядок 1 не заповнений повністю. Прихована пуста <td> (Table.jsx). */
+  .table-wrap tbody td.table-mobile-linebreak {
+    display: block !important;
+    order: 4;
+    flex-basis: 100% !important;
+    width: 100% !important;
+    height: 0 !important;
+  }
+
+  /* Рядок 2: другорядні поля — компактно, через "•", приглушеним кольором */
+  .table-wrap tbody td.table-mobile-secondary,
+  .table-wrap tbody td.table-mobile-trailing {
+    order: 5;
+    flex: 0 1 auto !important;
+    width: auto !important;
+    max-width: 100% !important;
+    margin-top: 4px !important;
+    color: var(--text-secondary) !important;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .table-wrap tbody td.table-mobile-secondary + td.table-mobile-secondary::before {
+    content: '•';
+    margin: 0 6px;
+    color: var(--text-muted);
+  }
+  /* ...значення праворуч (дата/сума) — притиснуте до правого краю рядка 2 */
+  .table-wrap tbody td.table-mobile-trailing {
+    order: 6;
+    flex-shrink: 0 !important;
+    margin-left: auto !important;
+    padding-left: 8px !important;
+    color: var(--text-muted) !important;
+  }
+
+  /* Поля без мобільного прапорця — приховані на мобільному (лишаються на десктопі) */
+  .table-wrap tbody td.table-mobile-hidden-cell {
+    display: none !important;
+  }
+
+  /* Рядок з loader/empty-state — не картка */
+  .table-wrap tbody tr:has(td[colspan]) {
+    display: block !important;
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    cursor: default;
+  }
+
+  /* Відмова від карткового вигляду — напр. матриця прав (не список записів) */
+  .table-wrap.no-mobile-cards {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .table-wrap.no-mobile-cards table {
+    min-width: 600px !important;
+    width: auto !important;
+  }
+  .table-wrap.no-mobile-cards thead {
+    display: table-header-group !important;
+  }
+  .table-wrap.no-mobile-cards tbody tr {
+    display: table-row !important;
+    background: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    margin-bottom: 0 !important;
+    padding: 0 !important;
+    cursor: default;
+  }
+  .table-wrap.no-mobile-cards tbody td {
+    display: table-cell !important;
+    padding: 10px 12px !important;
+    border-bottom: 1px solid var(--border) !important;
+    font-size: 13px !important;
+  }
+
+  /* fin-tabs — горизонтальний скрол вкладок */
+  .fin-tabs {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    flex-wrap: nowrap !important;
+    white-space: nowrap !important;
+    padding-bottom: 4px !important;
+  }
+  .fin-tab-btn {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+  }
+
+  /* fin-summary картки — одна колонка */
+  .fin-summary {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  /* period-btn фільтри — скрол */
+  .period-btn {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+  }
+
+  /* Картка, що містить таблицю-список (не матрицю з no-mobile-cards) — знімаємо overflow:hidden
+     і власний фон/межу зовнішньої картки: кожен рядок уже сам є карткою, і той самий колір
+     фону впритул до країв без відступу виглядав як зайвий дублюючий шар. */
+  .card:has(.table-wrap:not(.no-mobile-cards)) {
+    overflow: visible !important;
+    background: none !important;
+    border: none !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   МОБІЛЬНИЙ КОМПАКТНИЙ СПИСОК ЗАПИСІВ — для сторінок із "сирою"
+   <table> (без Table.jsx), напр. TrainersPage/BillingPage/SaasPage:
+   своя розмітка `.mobile-record-list > .mobile-record-card` поряд
+   з desktop-таблицею (яку сторінка сама ховає на мобільному класом
+   типу `xxx-table-desktop { display:none }` в своєму CSS-файлі).
+   ═══════════════════════════════════════════════════════════ */
+.mobile-record-list { display: none; }
+
+@media (max-width: 768px) {
+  .mobile-record-list { display: block; padding: 10px; }
+
+  .mobile-record-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: background .12s, border-color .12s;
+  }
+  .mobile-record-card:last-child { margin-bottom: 0; }
+  .mobile-record-card:active { background: var(--bg-hover); border-color: var(--border-light); }
+
+  .mrc-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .mrc-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .mrc-sub {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 4px;
+    font-size: 12px;
+  }
+  .mrc-meta {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .mrc-meta .badge { flex-shrink: 0; }
+  .mrc-dot { color: var(--text-muted); }
+  .mrc-date, .mrc-amount {
+    flex-shrink: 0;
+    color: var(--text-muted);
+  }
+  .mrc-amount { font-weight: 600; color: var(--accent); font-size: 13px; }
+}
+
+/* Кнопка "⋮" (сама, або як тригер CardMenu.jsx) — спільна для .mobile-record-card і Table.jsx-карток */
+.mrc-menu-btn {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+.mrc-menu-btn:active { background: var(--bg-hover); color: var(--text-primary); }
+
+/* CardMenu.jsx — випадний список дій під кнопкою "⋮" */
+.card-menu { position: relative; }
+.card-menu-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 20;
+  min-width: 160px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+}
+.card-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border: none;
+  background: none;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: inherit;
+  text-align: left;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.card-menu-item:active { background: var(--bg-hover); }
+.card-menu-item.danger { color: var(--danger); }
+
+/* ── ПАГІНАЦІЯ (спільний компонент Pagination.jsx) ───────────── */
+.pagination {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  padding: 16px 0 0;
+  font-size: 13px; color: var(--text-secondary);
+  flex-wrap: wrap; gap: 12px;
+}
+.pagination-btns { display: flex; gap: 4px; }
+.page-btn {
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: none; cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 13px; font-family: inherit;
+  transition: all .12s;
+}
+.page-btn:hover:not(:disabled) { background: var(--bg-hover); color: var(--text-primary); }
+.page-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.page-btn:disabled { opacity: .4; cursor: not-allowed; }
+

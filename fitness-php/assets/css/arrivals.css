@@ -1,0 +1,293 @@
+/* ============================================================
+   arrivals.css — стилі сторінки журналу приходів
+   ============================================================ */
+
+/* Статистика */
+.arr-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.arr-stat {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  position: relative;
+  overflow: hidden;
+}
+.arr-stat::before {
+  content: '';
+  position: absolute; top: 0; left: 0;
+  width: 3px; height: 100%;
+  background: var(--as-accent, var(--accent));
+}
+.arr-stat.green  { --as-accent: var(--success); }
+.arr-stat.red    { --as-accent: var(--danger);  }
+.arr-stat.orange { --as-accent: var(--warning); }
+.arr-stat.purple { --as-accent: #c4b5fd; }
+.as-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .3px; }
+.as-value { font-size: 22px; font-weight: 700; margin: 4px 0 2px; }
+.as-sub   { font-size: 12px; color: var(--text-secondary); }
+
+/* Тулбар */
+.arr-toolbar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+.arr-toolbar .form-group { margin: 0; }
+
+/* Бейджі операцій */
+.op-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.op-badge.arrival  { background: rgba(52,211,153,.12);  color: var(--success); }
+.op-badge.overdue  { background: rgba(248,113,113,.12); color: var(--danger);  }
+.op-badge.repack   { background: rgba(251,191,36,.12);  color: var(--warning); }
+.op-badge.transfer { background: rgba(136,135,128,.12); color: var(--text-secondary); }
+
+/* Бейджі статусів */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.status-badge.paid    { background: rgba(52,211,153,.12);  color: var(--success); }
+.status-badge.unpaid  { background: rgba(248,113,113,.12); color: var(--danger);  }
+.status-badge.pending { background: rgba(251,191,36,.12);  color: var(--warning); }
+
+/* Кількість зі знаком */
+.qty-plus  { color: var(--success); font-weight: 600; }
+.qty-minus { color: var(--danger);  font-weight: 600; }
+.qty-wait  { color: var(--warning); font-weight: 600; }
+
+/* Рядок товару */
+.arr-product-name { font-size: 14px; font-weight: 500; }
+.arr-product-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+/* Підтвердження pending */
+.confirm-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all .12s;
+  white-space: nowrap;
+}
+.confirm-btn:hover {
+  border-color: var(--success);
+  color: var(--success);
+  background: rgba(52,211,153,.08);
+}
+
+/* Модалка підтвердження */
+.confirm-status-btns {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.csb {
+  flex: 1;
+  min-width: 120px;
+  padding: 10px 14px;
+  border: 2px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all .12s;
+  text-align: center;
+}
+.csb:hover { border-color: var(--accent); color: var(--text-primary); }
+.csb.active[data-s="paid"]   { border-color: var(--success); background: rgba(52,211,153,.1); color: var(--success); }
+.csb.active[data-s="unpaid"] { border-color: var(--danger);  background: rgba(248,113,113,.1); color: var(--danger); }
+
+/* Фільтр-кнопки операцій */
+.op-filter-btn {
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all .12s;
+  white-space: nowrap;
+}
+.op-filter-btn:hover  { border-color: var(--accent); color: var(--accent); }
+.op-filter-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+
+/* Мобільний адаптив */
+@media (max-width: 600px) {
+  .arr-stats { grid-template-columns: 1fr 1fr; }
+}
+
+/* ════════════════════════════════════════════════════════════
+   CC-CARD — Мобільна картка приходу
+   ════════════════════════════════════════════════════════════ */
+
+/* На десктопі картка прихована — видно тільки .cc-desktop-name */
+.cc-card         { display: none; }
+.cc-desktop-name { display: inline; }
+
+@media (max-width: 768px) {
+
+  /* Ховаємо десктопний вигляд */
+  .cc-desktop-name { display: none; }
+  thead            { display: none; }
+
+  /* Таблиця → список карток */
+  table, tbody, tr, td {
+    display: block;
+    width: 100%;
+  }
+  tr {
+    margin-bottom: 10px;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+  /* Ховаємо всі td крім першого (картки) */
+  td:not(:first-child) { display: none; }
+
+  /* ── Ліва смужка за типом операції ──────────────────── */
+  tr[data-color="arrival"]  td:first-child { border-left: 3px solid var(--success); }
+  tr[data-color="overdue"]  td:first-child { border-left: 3px solid var(--danger);  }
+  tr[data-color="repack"]   td:first-child { border-left: 3px solid var(--warning); }
+  tr[data-color="transfer"] td:first-child { border-left: 3px solid var(--text-muted); }
+
+  td:first-child {
+    padding: 0 !important;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+  }
+
+  /* ── Сама картка ─────────────────────────────────────── */
+  .cc-card {
+    display: grid;
+    grid-template-areas:
+      "photo info  info  amount"
+      "photo meta  meta  meta"
+      "photo badge badge actions";
+    grid-template-columns: 52px 1fr 1fr auto;
+    grid-template-rows: auto auto auto;
+    gap: 0;
+    padding: 10px 12px 10px 0;
+    align-items: start;
+  }
+
+  /* Фото */
+  .cc-photo,
+  .cc-photo-placeholder {
+    grid-area: photo;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    object-fit: cover;
+    margin: 2px auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    justify-self: center;
+  }
+  .cc-photo { padding: 0; }
+
+  /* Назва */
+  .cc-body  { grid-area: info; }
+  .cc-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.3;
+    word-break: break-word;
+    white-space: normal;
+  }
+
+  /* Мета-рядок (кількість · дата · постачальник) */
+  .cc-sub {
+    grid-area: meta;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 3px;
+    line-height: 1.4;
+  }
+
+  /* Сума */
+  .cc-right  { grid-area: amount; text-align: right; }
+  .cc-amount {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+  }
+
+  /* Статус бейдж */
+  .cc-badge {
+    grid-area: badge;
+    margin-top: 6px;
+    align-self: center;
+  }
+
+  /* Кнопки дій */
+  .cc-actions {
+    grid-area: actions;
+    display: flex;
+    gap: 4px;
+    justify-content: flex-end;
+    align-items: center;
+    margin-top: 6px;
+  }
+  .cc-actions .confirm-btn {
+    padding: 6px 8px;
+    font-size: 14px;
+    line-height: 1;
+    border-radius: var(--radius-sm);
+  }
+}
+
+/* Кнопки операцій і статусів у модалці приходу */
+.arr-op-btn, .arr-status-btn {
+  padding: 7px 13px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all .12s;
+  white-space: nowrap;
+}
+.arr-op-btn:hover, .arr-status-btn:hover { border-color: var(--accent); color: var(--text-primary); }
+.arr-op-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); font-weight: 500; }
+.arr-status-btn.active[data-status="paid"]    { background: rgba(52,211,153,.12); border-color: var(--success); color: var(--success); }
+.arr-status-btn.active[data-status="unpaid"]  { background: rgba(248,113,113,.12); border-color: var(--danger); color: var(--danger); }
+.arr-status-btn.active[data-status="pending"] { background: rgba(251,191,36,.12); border-color: var(--warning); color: var(--warning); }

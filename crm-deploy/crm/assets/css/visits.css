@@ -1,0 +1,240 @@
+/* ============================================================
+   visits.css — стилі журналу відвідувань
+   ============================================================ */
+
+/* ── Блок сканування ─────────────────────────────────────────── */
+.scan-block {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 28px 32px;
+  margin-bottom: 24px;
+  text-align: center;
+}
+.scan-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+.scan-input-wrap {
+  display: flex;
+  gap: 10px;
+  max-width: 500px;
+  margin: 0 auto;
+}
+.scan-input {
+  flex: 1;
+  font-size: 20px !important;
+  font-weight: 600;
+  text-align: center;
+  letter-spacing: 2px;
+  padding: 14px 16px !important;
+  border: 2px solid var(--border) !important;
+  border-radius: var(--radius-md) !important;
+  transition: border-color .15s, box-shadow .15s !important;
+}
+.scan-input:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px rgba(79,156,249,.15) !important;
+  outline: none;
+}
+.scan-input::placeholder { font-size: 15px; letter-spacing: 0; font-weight: 400; }
+
+.scan-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 10px;
+}
+.scan-hint strong { color: var(--accent); }
+
+/* ── Картка результату сканування ───────────────────────────── */
+.scan-result {
+  margin-top: 20px;
+  display: none;
+}
+.scan-result-card {
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  text-align: left;
+  animation: scanIn .25s ease;
+}
+@keyframes scanIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.scan-result-card.success {
+  background: rgba(52,211,153,.1);
+  border: 1px solid rgba(52,211,153,.3);
+}
+.scan-result-card.warning {
+  background: rgba(251,191,36,.08);
+  border: 1px solid rgba(251,191,36,.3);
+}
+.scan-result-card.error {
+  background: rgba(248,113,113,.08);
+  border: 1px solid rgba(248,113,113,.3);
+}
+.scan-result-card.already {
+  background: rgba(79,156,249,.08);
+  border: 1px solid rgba(79,156,249,.25);
+}
+
+.scan-avatar {
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; font-weight: 700;
+  color: var(--accent);
+  flex-shrink: 0;
+  border: 2px solid rgba(79,156,249,.3);
+  overflow: hidden;
+}
+.scan-avatar img { width:100%; height:100%; object-fit:cover; }
+
+.scan-client-name {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.scan-client-sub {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+.scan-check-icon {
+  margin-left: auto;
+  font-size: 36px;
+  flex-shrink: 0;
+}
+.scan-warning {
+  font-size: 12px;
+  margin-top: 6px;
+  padding: 5px 10px;
+  background: rgba(251,191,36,.12);
+  border-radius: var(--radius-sm);
+  color: var(--warning);
+  display: inline-block;
+}
+
+/* ── Лічильник сьогодні ─────────────────────────────────────── */
+.today-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.today-stat {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  text-align: center;
+}
+.ts-value { font-size: 28px; font-weight: 700; color: var(--accent); }
+.ts-label { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+/* ── Список відвідувань сьогодні ────────────────────────────── */
+.visit-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+  animation: visitIn .2s ease;
+}
+@keyframes visitIn {
+  from { opacity: 0; background: rgba(52,211,153,.08); }
+  to   { opacity: 1; background: transparent; }
+}
+.visit-row:last-child { border-bottom: none; }
+.visit-avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-size: 13px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.visit-avatar img { width:100%; height:100%; object-fit:cover; }
+.visit-name  { font-weight: 500; }
+.visit-sub   { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+.visit-time  { font-size: 13px; color: var(--text-secondary); margin-left: auto; flex-shrink: 0; }
+.visit-method-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: .3px;
+}
+.visit-method-badge.barcode { background: rgba(52,211,153,.12); color: var(--success); }
+.visit-method-badge.manual  { background: rgba(79,156,249,.12);  color: var(--accent); }
+.visit-method-badge.admin   { background: rgba(167,139,250,.12); color: #c4b5fd; }
+
+/* ── Міні-графік відвідувань ────────────────────────────────── */
+.chart-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 60px;
+  margin-top: 8px;
+}
+.chart-bar-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  height: 100%;
+  justify-content: flex-end;
+}
+.chart-bar {
+  width: 100%;
+  background: var(--accent-dim);
+  border-radius: 3px 3px 0 0;
+  min-height: 3px;
+  transition: height .4s ease;
+  cursor: pointer;
+  position: relative;
+}
+.chart-bar:hover { background: var(--accent); }
+.chart-bar-label {
+  font-size: 9px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* ── Пагінація ──────────────────────────────────────────────── */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.pagination-btns { display: flex; gap: 4px; }
+.page-btn {
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: none; cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 13px; font-family: inherit;
+  transition: all .12s;
+}
+.page-btn:hover:not(:disabled) { background: var(--bg-hover); color: var(--text-primary); }
+.page-btn.active { background: var(--accent); color:#fff; border-color: var(--accent); }
+.page-btn:disabled { opacity: .4; cursor: not-allowed; }

@@ -1,0 +1,114 @@
+/* 1:1 з assets/css/clubs.css */
+
+.club-name  { font-weight: 500; font-size: 14px; }
+.club-owner { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+.badge-trial         { background: rgba(79,156,249,.12);  color: var(--accent); }
+.badge-trial_expired { background: rgba(248,113,113,.12); color: var(--danger); }
+.badge-past_due      { background: rgba(251,191,36,.12);  color: var(--warning); }
+.badge-deleted       { background: rgba(136,135,128,.12); color: var(--text-muted); }
+
+.trial-days { font-size: 12px; margin-top: 2px; }
+.trial-days.ok     { color: var(--success); }
+.trial-days.warn   { color: var(--warning); }
+.trial-days.danger { color: var(--danger);  }
+
+.platform-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 28px;
+}
+.platform-stat {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  position: relative;
+  overflow: hidden;
+}
+.platform-stat::before {
+  content: '';
+  position: absolute; top: 0; left: 0;
+  width: 3px; height: 100%;
+  background: var(--ps-accent, var(--accent));
+}
+.platform-stat.green  { --ps-accent: var(--success); }
+.platform-stat.orange { --ps-accent: var(--warning); }
+.platform-stat.red    { --ps-accent: var(--danger);  }
+.platform-stat.purple { --ps-accent: #c4b5fd; }
+.ps-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .4px; }
+.ps-value { font-size: 26px; font-weight: 700; margin: 4px 0 2px; }
+.ps-sub   { font-size: 12px; color: var(--text-secondary); }
+
+.club-detail-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  margin-bottom: 8px;
+}
+/* .detail-row/.detail-row-label — спільні в admin.css (DetailFieldsGrid variant="rows") */
+
+.payment-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.payment-row:last-child { border-bottom: none; }
+.payment-amount { font-weight: 600; color: var(--success); }
+.payment-gateway { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .3px; }
+
+.club-admin-card {
+  margin-top: 20px;
+  padding: 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.club-admin-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.club-admin-card-fields {
+  display: grid;
+  grid-template-columns: 1.4fr .8fr;
+  gap: 0 12px;
+  margin-bottom: 14px;
+}
+@media (max-width: 480px) {
+  .club-admin-card-fields { grid-template-columns: 1fr; }
+}
+
+.clubs-toolbar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.status-filter-btn {
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all .12s;
+  white-space: nowrap;
+}
+.status-filter-btn:hover  { border-color: var(--accent); color: var(--accent); }
+.status-filter-btn.active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+/* .modal-tabs/.modal-tab-btn — спільні в admin.css */

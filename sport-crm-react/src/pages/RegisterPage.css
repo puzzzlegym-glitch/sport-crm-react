@@ -1,0 +1,101 @@
+.reg-wrap { max-width: 900px; margin: 0 auto; padding: 40px 24px; }
+
+.reg-header { text-align: center; margin-bottom: 40px; }
+.reg-logo { font-size: 28px; font-weight: 700; letter-spacing: -1px; }
+.reg-logo span { color: var(--accent); }
+.reg-tagline { color: var(--text-muted); font-size: 15px; margin-top: 6px; }
+
+.reg-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 24px; align-items: start; }
+@media (max-width: 700px) { .reg-grid { grid-template-columns: 1fr; } }
+
+.section-label {
+  font-size: 14px; font-weight: 600; color: var(--text-secondary);
+  margin-bottom: 12px; text-transform: uppercase; letter-spacing: .5px;
+}
+.section-label.small {
+  font-size: 12px; color: var(--text-muted); margin-bottom: 12px;
+}
+
+/* Картки планів */
+.plan-cards { display: flex; flex-direction: column; gap: 10px; }
+.plan-card {
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 16px 20px;
+  cursor: pointer; transition: border-color .15s, box-shadow .15s; position: relative;
+}
+.plan-card:hover { border-color: var(--accent); }
+.plan-card.featured { border-color: var(--accent); background: rgba(79,156,249,.05); }
+.plan-card.selected {
+  border-color: var(--accent); background: rgba(79,156,249,.1);
+  box-shadow: 0 0 0 2px rgba(79,156,249,.3);
+}
+.plan-featured-badge {
+  position: absolute; top: -10px; left: 20px; background: var(--accent);
+  color: #fff; font-size: 11px; font-weight: 600; padding: 2px 10px; border-radius: 20px;
+}
+.plan-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.plan-name { font-size: 15px; font-weight: 600; }
+.plan-price { font-size: 18px; font-weight: 700; color: var(--accent); }
+.plan-price span { font-size: 12px; font-weight: 400; color: var(--text-muted); }
+.plan-select-mark {
+  width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border);
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 11px; color: transparent; transition: all .15s;
+}
+.plan-card.selected .plan-select-mark { background: var(--accent); border-color: var(--accent); color: #fff; }
+.plan-features { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.plan-feature { font-size: 12px; color: var(--text-secondary); display: flex; gap: 6px; }
+.plan-feature::before { content: '✓'; color: var(--success); flex-shrink: 0; }
+
+.trial-note {
+  margin-top: 16px; padding: 14px; background: var(--bg-surface);
+  border: 1px solid var(--border); border-radius: var(--radius-md);
+  font-size: 13px; color: var(--text-secondary);
+}
+.trial-note-title { font-weight: 600; color: var(--text-primary); margin-bottom: 6px; }
+
+/* Форма реєстрації */
+.reg-form-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 28px; }
+.reg-form-title { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+.reg-form-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; }
+
+.selected-plan-summary {
+  background: rgba(79,156,249,.08); border: 1px solid rgba(79,156,249,.25);
+  border-radius: var(--radius-sm); padding: 10px 14px; font-size: 13px;
+  color: var(--accent); margin-bottom: 16px;
+}
+.selected-plan-summary strong { color: var(--text-primary); }
+
+.form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+@media (max-width: 500px) { .form-row-2 { grid-template-columns: 1fr; } }
+
+.pwd-strength { height: 3px; border-radius: 2px; margin-top: 6px; background: var(--border); overflow: hidden; }
+.pwd-strength-bar { height: 100%; width: 0; transition: width .3s, background .3s; border-radius: 2px; }
+.pwd-hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+.email-status { font-size: 12px; margin-top: 4px; height: 16px; }
+.email-status.ok { color: var(--success); }
+.email-status.err { color: var(--danger); }
+
+.btn-register {
+  width: 100%; padding: 13px; background: var(--accent); color: #fff; border: none;
+  border-radius: var(--radius-sm); font-size: 15px; font-weight: 600; font-family: inherit;
+  cursor: pointer; transition: background .15s; margin-top: 8px;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn-register:hover:not(:disabled) { background: var(--accent-hover); }
+.btn-register:disabled { opacity: .7; cursor: not-allowed; }
+
+.trial-badge {
+  display: flex; align-items: center; gap: 8px; background: rgba(52,211,153,.08);
+  border: 1px solid rgba(52,211,153,.25); border-radius: var(--radius-sm);
+  padding: 10px 14px; font-size: 13px; color: var(--success); margin-bottom: 20px;
+}
+
+.login-link { text-align: center; margin-top: 16px; font-size: 12px; color: var(--text-muted); }
+
+/* Екран успіху */
+.success-screen { text-align: center; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 48px 32px; }
+.success-icon { margin-bottom: 16px; color: var(--success); display: flex; justify-content: center; }
+.success-screen h2 { font-size: 22px; font-weight: 600; margin-bottom: 10px; }
+.success-screen p { color: var(--text-secondary); font-size: 15px; line-height: 1.6; }

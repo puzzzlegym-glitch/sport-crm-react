@@ -1,0 +1,23 @@
+/* sales.css */
+
+.sales-day-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 4px 6px;
+  margin-top: 20px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+.sales-day-header:first-child { margin-top: 0; }
+
+.num { text-align: right; }
+
+/* Бейджі способів оплати */
+.badge-cash     { background: rgba(34,197,94,.15);  color: #4ade80; }
+.badge-card     { background: rgba(99,102,241,.15); color: #818cf8; }
+.badge-terminal { background: rgba(234,179,8,.15);  color: #fbbf24; }
+.badge-deposit  { background: rgba(168,85,247,.15); color: #c084fc; }
+.badge-other    { background: rgba(100,116,139,.15);color: #94a3b8; }

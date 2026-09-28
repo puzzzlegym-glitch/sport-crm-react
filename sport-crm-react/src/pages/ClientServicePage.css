@@ -1,0 +1,264 @@
+.csp-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.csp-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  margin-bottom: 10px;
+}
+
+/* ── HERO ────────────────────────────────────────────────────── */
+.csp-hero {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+}
+.csp-hero-logo {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--accent-dim);
+  color: var(--accent);
+  border: 1px solid rgba(79,156,249,.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.csp-hero-main { flex: 1; min-width: 0; }
+.csp-hero-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.csp-hero-title { font-size: 19px; font-weight: 700; letter-spacing: .3px; }
+.csp-hero-status { margin-bottom: 8px; }
+.csp-hero-desc { color: var(--text-secondary); font-size: 13px; margin-bottom: 8px; }
+.csp-hero-url {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+}
+.csp-hero-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.csp-hero-qr {
+  flex-shrink: 0;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.csp-hero-qr > img {
+  display: block;
+  width: 140px; height: 140px;
+  background: #fff;
+  border-radius: var(--radius-md);
+  padding: 8px;
+}
+.csp-hero-qr-label { font-size: 11px; color: var(--text-muted); max-width: 140px; line-height: 1.3; text-align: center; }
+
+/* ── СТАТИСТИКА ──────────────────────────────────────────────── */
+.csp-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+.csp-stat {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+}
+.csp-stat-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.csp-stat-icon {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--csp-accent) 15%, transparent);
+  color: var(--csp-accent);
+}
+.csp-stat-trend {
+  display: flex; align-items: center; gap: 3px;
+  font-size: 11px; font-weight: 600;
+  color: var(--success);
+  background: rgba(52,211,153,.12);
+  border-radius: 20px;
+  padding: 2px 7px;
+}
+.csp-stat-value { font-size: 24px; font-weight: 700; line-height: 1.2; color: var(--text-primary); }
+.csp-stat-label { font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-top: 2px; }
+.csp-stat-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+/* ── ROW: BOTS + QUICK ACTIONS ──────────────────────────────── */
+.csp-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.csp-bots-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+.csp-bot-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  transition: border-color .15s;
+}
+.csp-bot-card:hover { border-color: var(--border-light); }
+.csp-bot-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.csp-bot-icon {
+  width: 32px; height: 32px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--accent-dim);
+  color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+}
+.csp-bot-name-wrap { flex: 1; min-width: 0; }
+.csp-bot-name { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.csp-bot-username { font-size: 12px; color: var(--accent); margin-top: 1px; }
+.csp-bot-desc { font-size: 12px; color: var(--text-secondary); margin: 0 0 12px; line-height: 1.5; }
+.csp-bot-actions { display: flex; gap: 8px; align-items: center; }
+.csp-bot-actions .btn { display: inline-flex; align-items: center; gap: 4px; }
+.csp-icon-btn {
+  width: 30px; height: 30px;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.csp-icon-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+.csp-actions-section .card,
+.csp-actions-list {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 6px;
+}
+.csp-action-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  font-family: inherit;
+  transition: background .15s;
+}
+.csp-action-item:hover { background: var(--bg-hover); }
+.csp-action-item:hover .csp-action-arrow { transform: translateX(2px); }
+.csp-action-icon {
+  width: 28px; height: 28px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--csp-accent) 15%, transparent);
+  color: var(--csp-accent);
+  display: flex; align-items: center; justify-content: center;
+}
+.csp-action-body { flex: 1; min-width: 0; }
+.csp-action-title { font-size: 13px; font-weight: 500; }
+.csp-action-desc { font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.csp-action-arrow { flex-shrink: 0; color: var(--text-muted); transition: transform .15s; }
+
+/* ── WORKFLOW ───────────────────────────────────────────────── */
+.csp-workflow-wrap {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+}
+.csp-workflow-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.csp-link-btn {
+  display: inline-flex; align-items: center; gap: 3px;
+  background: none; border: none; cursor: pointer;
+  font-family: inherit; font-size: 12px; font-weight: 500;
+  color: var(--accent);
+  padding: 0;
+}
+.csp-link-btn:hover { color: var(--accent-hover); }
+.csp-workflow {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+.csp-workflow-step { position: relative; padding-right: 4px; }
+.csp-step-badge {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 8px;
+}
+.csp-step-title { font-size: 13px; font-weight: 600; margin-bottom: 3px; }
+.csp-step-desc { font-size: 11.5px; color: var(--text-secondary); line-height: 1.4; }
+.csp-step-arrow {
+  position: absolute;
+  top: 6px;
+  right: -14px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+/* ── АДАПТИВНІСТЬ ───────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  .csp-row { grid-template-columns: 1fr; }
+}
+@media (max-width: 900px) {
+  .csp-stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .csp-workflow { grid-template-columns: repeat(3, 1fr); row-gap: 16px; }
+  .csp-step-arrow { display: none; }
+}
+@media (max-width: 720px) {
+  .csp-hero { flex-direction: column; align-items: stretch; text-align: center; }
+  .csp-hero-logo { align-self: center; }
+  .csp-hero-top { justify-content: center; }
+  .csp-hero-url { justify-content: center; }
+  .csp-hero-actions { justify-content: center; }
+  .csp-hero-qr { width: 100%; }
+  .csp-hero-qr > img { width: 100%; height: auto; aspect-ratio: 1 / 1; max-width: 260px; margin: 0 auto; }
+  .csp-bots-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .csp-stats-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .csp-stat { padding: 10px 8px; }
+  .csp-stat-top { margin-bottom: 6px; }
+  .csp-stat-icon { width: 26px; height: 26px; }
+  .csp-stat-trend { font-size: 10px; padding: 1px 5px; }
+  .csp-stat-value { font-size: 18px; }
+  .csp-stat-label { font-size: 10.5px; }
+  .csp-stat-sub { font-size: 9.5px; }
+  .csp-workflow { grid-template-columns: 1fr; }
+}

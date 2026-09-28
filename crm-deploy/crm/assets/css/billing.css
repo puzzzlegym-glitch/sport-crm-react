@@ -1,0 +1,131 @@
+/* ============================================================
+   billing.css — стилі сторінки підписки і оплати
+   ============================================================ */
+
+/* Статус-банер підписки */
+.sub-banner {
+  padding: 16px 20px;
+  border-radius: var(--radius-md);
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.sub-banner.trial {
+  background: rgba(79,156,249,.1);
+  border: 1px solid rgba(79,156,249,.3);
+}
+.sub-banner.trial_warn {
+  background: rgba(251,191,36,.1);
+  border: 1px solid rgba(251,191,36,.3);
+}
+.sub-banner.expired {
+  background: rgba(248,113,113,.1);
+  border: 1px solid rgba(248,113,113,.3);
+}
+.sub-banner.active {
+  background: rgba(52,211,153,.1);
+  border: 1px solid rgba(52,211,153,.3);
+}
+.sub-banner-text h3 { font-size: 15px; font-weight: 600; margin-bottom: 2px; }
+.sub-banner-text p  { font-size: 13px; color: var(--text-secondary); }
+
+/* Поточний план */
+.current-plan-card {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 20px 24px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+}
+.plan-badge {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent);
+}
+.plan-meta           { flex: 1; }
+.plan-meta-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+.plan-meta-value { font-size: 14px; margin-top: 2px; }
+
+/* Прогрес-бари лімітів */
+.limit-item            { margin-bottom: 14px; }
+.limit-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  margin-bottom: 5px;
+}
+.limit-label span:last-child { color: var(--text-muted); }
+.limit-bar {
+  height: 5px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.limit-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width .5s;
+}
+.limit-bar-fill.ok   { background: var(--success); }
+.limit-bar-fill.warn { background: var(--warning); }
+.limit-bar-fill.full { background: var(--danger);  }
+
+/* Картки планів */
+.plans-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+@media (max-width: 700px) {
+  .plans-grid { grid-template-columns: 1fr; }
+}
+.billing-plan-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  position: relative;
+}
+.billing-plan-card.current { border-color: var(--accent); }
+.billing-plan-card .plan-current-label {
+  position: absolute;
+  top: -10px; left: 16px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 20px;
+}
+.bp-name  { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+.bp-price { font-size: 24px; font-weight: 700; color: var(--accent); margin-bottom: 12px; }
+.bp-price small { font-size: 13px; font-weight: 400; color: var(--text-muted); }
+.bp-features {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 16px;
+}
+.bp-feature {
+  font-size: 13px;
+  color: var(--text-secondary);
+  display: flex;
+  gap: 6px;
+}
+.bp-feature::before { content: '✓'; color: var(--success); }
+
+/* Статуси рахунків */
+.invoice-status-paid  { color: var(--success); }
+.invoice-status-draft { color: var(--text-muted); }
+.invoice-status-void  { color: var(--danger); }

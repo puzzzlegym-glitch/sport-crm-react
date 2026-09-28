@@ -1,0 +1,16 @@
+-- trg_visit_trainer_earning (AFTER INSERT ON visits) — видаляємо як мертвий код.
+--
+-- Аналіз + емпірична перевірка на локальному стенді (2026-09-12, див. memory
+-- project_sport_crm_db_triggers.md): Attendance::createTrainerEarning() в
+-- PHP створює ОКРЕМИЙ запис trainer_earnings на КОЖНЕ відвідування і для
+-- release_trigger='on_each_visit' (єдине значення, яке реально використовує
+-- хоч один тариф) одразу робить його ПОВНІСТЮ розблокованим
+-- (available_amount=amount, status='available'). Тому LEAST(amount,
+-- available_amount+unlock) у тригері завжди впирається у вже досягнутий
+-- максимум — тригер ніколи нічого фактично не змінює. Для тарифів з
+-- on_visits_done/on_end_date тригер узагалі не спрацьовує (умова
+-- v_trigger='on_each_visit' не збігається) — там працює trg_invoice_trainer_earning
+-- (окремий тригер на client_invoices, лишається — він живий і потрібний).
+--
+-- Підтверджено користувачем 2026-09-12: видалити, не переносити в код.
+DROP TRIGGER IF EXISTS trg_visit_trainer_earning;

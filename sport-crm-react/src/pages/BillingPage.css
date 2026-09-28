@@ -1,0 +1,213 @@
+/* Сторінка "Підписка" */
+
+.sub-banner {
+  padding: 16px 20px;
+  border-radius: var(--radius-md);
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.sub-banner.trial      { background: rgba(79,156,249,.1);   border: 1px solid rgba(79,156,249,.3); }
+.sub-banner.trial_warn { background: rgba(251,191,36,.1);   border: 1px solid rgba(251,191,36,.3); }
+.sub-banner.expired    { background: rgba(248,113,113,.1);  border: 1px solid rgba(248,113,113,.3); }
+.sub-banner.active     { background: rgba(52,211,153,.1);   border: 1px solid rgba(52,211,153,.3); }
+
+/* Об'єднана картка статусу підписки + поточного плану */
+.billing-status-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+.bsc-top {
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.billing-status-card.trial      .bsc-top { background: rgba(79,156,249,.1); }
+.billing-status-card.trial_warn .bsc-top { background: rgba(251,191,36,.1); }
+.billing-status-card.expired    .bsc-top { background: rgba(248,113,113,.1); }
+.billing-status-card.active     .bsc-top { background: rgba(52,211,153,.1); }
+.bsc-bottom {
+  padding: 20px 24px;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border);
+}
+
+.sub-banner-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: color-mix(in srgb, var(--icon-color) 16%, transparent);
+  color: var(--icon-color);
+}
+.sub-banner-text { flex: 1; min-width: 180px; }
+.sub-banner-text h3 { font-size: 15px; font-weight: 600; margin-bottom: 2px; }
+.sub-banner-text p  { font-size: 13px; color: var(--text-secondary); }
+
+.sub-banner-meta { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.sbm-item { display: flex; flex-direction: column; gap: 3px; }
+.sbm-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .4px; }
+.sbm-value { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 5px; }
+.sbm-pill {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 20px;
+  white-space: nowrap;
+  background: rgba(52,211,153,.14);
+  color: var(--success);
+}
+
+/* Поточний план */
+.current-plan-card-v2 {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.cp-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: color-mix(in srgb, var(--tier-color) 16%, transparent);
+  color: var(--tier-color);
+}
+.cp-info { flex: 1; min-width: 180px; }
+.cp-name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cp-name { font-size: 19px; font-weight: 700; }
+.cp-tier-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  padding: 3px 8px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--tier-color) 16%, transparent);
+  color: var(--tier-color);
+}
+.cp-desc { font-size: 13px; color: var(--text-secondary); margin-top: 3px; }
+
+.cp-stats { display: flex; gap: 26px; flex-wrap: wrap; }
+.cp-stat { display: flex; align-items: center; gap: 10px; }
+.cp-stat-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+.cp-stat-value { font-size: 15px; font-weight: 600; line-height: 1.2; }
+.cp-stat-label { font-size: 11px; color: var(--text-muted); }
+.cp-mini-bar { width: 84px; height: 4px; background: var(--border); border-radius: 3px; overflow: hidden; margin-top: 4px; }
+.cp-mini-bar-fill { height: 100%; border-radius: 3px; transition: width .5s; }
+.cp-mini-bar-fill.ok   { background: var(--success); }
+.cp-mini-bar-fill.warn { background: var(--warning); }
+.cp-mini-bar-fill.full { background: var(--danger); }
+
+.cp-price { font-size: 22px; font-weight: 700; text-align: right; white-space: nowrap; }
+.cp-price small { font-size: 12px; font-weight: 400; color: var(--text-muted); }
+
+.cp-trial-note, .cp-warning {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  margin-top: 16px;
+}
+.cp-trial-note { color: var(--text-secondary); }
+.cp-warning { color: var(--warning); }
+
+/* Тарифні плани */
+.plans-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+@media (max-width: 1000px) { .plans-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 620px)  { .plans-grid { grid-template-columns: 1fr; } }
+
+.billing-plan-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+.billing-plan-card.current  { border-color: var(--accent); }
+.billing-plan-card.featured {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.billing-plan-card .plan-current-label {
+  position: absolute;
+  top: -10px; left: 16px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 20px;
+}
+.plan-discount-ribbon {
+  position: absolute;
+  top: -10px; right: 16px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.bp-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+  background: color-mix(in srgb, var(--tier-color) 16%, transparent);
+  color: var(--tier-color);
+}
+.bp-name  { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+.bp-price { font-size: 24px; font-weight: 700; color: var(--accent); margin-bottom: 12px; }
+.bp-price small { font-size: 13px; font-weight: 400; color: var(--text-muted); }
+.bp-features { display: flex; flex-direction: column; gap: 5px; margin-bottom: 16px; flex: 1; }
+.bp-feature { font-size: 13px; color: var(--text-secondary); display: flex; gap: 6px; }
+.bp-feature::before { content: '✓'; color: var(--success); }
+
+/* Історія платежів */
+.inv-id { display: inline-flex; align-items: center; gap: 6px; color: var(--text-secondary); }
+
+.invoice-status-pill {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+}
+.invoice-status-pill.paid { background: rgba(52,211,153,.14); color: var(--success); }
+.invoice-status-pill.void { background: rgba(248,113,113,.14); color: var(--danger); }
+
+@media (max-width: 768px) {
+  .billing-invoices-desktop { display: none; }
+}

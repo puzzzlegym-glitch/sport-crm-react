@@ -1,0 +1,250 @@
+/* ============================================================
+   finance.css — стилі сторінки фінансів
+   ============================================================ */
+
+/* Зведені картки */
+.fin-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.fin-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  position: relative; overflow: hidden;
+}
+.fin-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0;
+  width: 3px; height: 100%;
+  background: var(--fc-accent, var(--accent));
+}
+.fin-card.income  { --fc-accent: var(--success); }
+.fin-card.expense { --fc-accent: var(--danger);  }
+.fin-card.profit  { --fc-accent: #c4b5fd; }
+.fin-card.neutral { --fc-accent: var(--accent); }
+.fc-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .4px; }
+.fc-value { font-size: 24px; font-weight: 700; margin: 6px 0 4px; }
+.fc-sub   { font-size: 12px; color: var(--text-secondary); }
+.fc-value.positive { color: var(--success); }
+.fc-value.negative { color: var(--danger);  }
+
+/* Блок методів оплати */
+.methods-grid {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.method-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 13px;
+}
+.method-pill-label { color: var(--text-secondary); }
+.method-pill-val   { font-weight: 600; color: var(--text-primary); }
+
+/* Вкладки */
+.fin-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.fin-tabs::-webkit-scrollbar { display: none; }
+.fin-tab-btn {
+  padding: 10px 18px;
+  border: none; background: none;
+  color: var(--text-secondary);
+  font-size: 14px; font-family: inherit;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color .12s, border-color .12s;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.fin-tab-btn:hover  { color: var(--text-primary); }
+.fin-tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+.fin-tab-content        { display: none; }
+.fin-tab-content.active { display: block; }
+
+/* Фільтр-рядок */
+.fin-toolbar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+.fin-toolbar .form-group { margin: 0; }
+
+/* Кнопки швидкого вибору периоду */
+.period-btns {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.period-btn {
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all .12s;
+  white-space: nowrap;
+}
+.period-btn:hover  { border-color: var(--accent); color: var(--accent); }
+.period-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+
+/* Рядок транзакції */
+.txn-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+.txn-row:last-child { border-bottom: none; }
+.txn-icon {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.txn-icon.income  { background: rgba(52,211,153,.12); }
+.txn-icon.expense { background: rgba(248,113,113,.12); }
+.txn-icon.deposit { background: rgba(79,156,249,.12); }
+.txn-desc { flex: 1; overflow: hidden; }
+.txn-desc-main { font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.txn-desc-sub  { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+.txn-amount { font-size: 15px; font-weight: 600; flex-shrink: 0; }
+.txn-amount.pos { color: var(--success); }
+.txn-amount.neg { color: var(--danger);  }
+
+/* Витрати по категоріях — горизонтальний бар */
+.cat-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border);
+}
+.cat-bar-row:last-child { border-bottom: none; }
+.cat-bar-name { flex: 1; color: var(--text-secondary); }
+.cat-bar-track {
+  width: 120px; height: 5px;
+  background: var(--border);
+  border-radius: 3px; overflow: hidden; flex-shrink: 0;
+}
+.cat-bar-fill {
+  height: 100%; border-radius: 3px;
+  background: var(--danger);
+  transition: width .4s;
+}
+.cat-bar-val { font-weight: 500; min-width: 80px; text-align: right; }
+
+/* Депозит бейдж */
+.dep-op {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+}
+.dep-op.top_up      { background: rgba(52,211,153,.12); color: var(--success); }
+.dep-op.pay_invoice { background: rgba(79,156,249,.12);  color: var(--accent); }
+.dep-op.pay_product { background: rgba(251,191,36,.12);  color: var(--warning); }
+.dep-op.refund      { background: rgba(52,211,153,.12);  color: var(--success); }
+.dep-op.correction  { background: rgba(136,135,128,.12); color: var(--text-secondary); }
+
+/* ════════════════════════════════════════════════════════════
+   MOBILE — Адаптив для фінансів
+   ════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+
+  /* Хедер — кнопки в ряд */
+  .page-header { gap: 8px !important; }
+  .page-header .btn { flex: 1; justify-content: center; }
+
+  /* Датер — в один рядок */
+  .fin-date-row {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .fin-date-row .form-group { margin: 0 !important; }
+
+  /* Картки 2×2 замість 4×1 */
+  .fin-summary {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .fin-card { padding: 12px 14px; }
+  .fc-value  { font-size: 18px; }
+  .fc-label  { font-size: 10px; }
+  .fc-sub    { font-size: 11px; }
+
+  /* Методи оплати — компактні */
+  .methods-grid { gap: 6px; margin-bottom: 14px; }
+  .method-pill  { padding: 5px 10px; font-size: 12px; }
+
+  /* Вкладки → 2×2 кнопки */
+  .fin-tabs {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    border-bottom: none !important;
+    margin-bottom: 16px;
+  }
+  .fin-tab-btn {
+    border: 1px solid var(--border) !important;
+    border-bottom: 1px solid var(--border) !important;
+    border-radius: var(--radius-sm) !important;
+    margin-bottom: 0 !important;
+    padding: 9px 8px !important;
+    font-size: 13px !important;
+    text-align: center;
+    background: var(--bg-elevated);
+  }
+  .fin-tab-btn.active {
+    background: var(--accent-dim) !important;
+    border-color: var(--accent) !important;
+    color: var(--accent) !important;
+  }
+
+  /* Огляд — блоки один під одним */
+  #overview-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* Таблиці у вкладках — один під одним */
+  .fin-tab-content .card { margin-bottom: 12px; }
+
+  /* Рядки транзакцій — компактніші */
+  .txn-desc-main { font-size: 13px; }
+  .txn-amount    { font-size: 14px; }
+
+  /* Бар категорій — ширший трек */
+  .cat-bar-track { width: 80px; }
+  .cat-bar-val   { min-width: 60px; font-size: 12px; }
+}

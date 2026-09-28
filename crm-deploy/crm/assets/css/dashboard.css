@@ -1,0 +1,76 @@
+/* ============================================================
+   dashboard.css — стилі сторінки дашборду
+   ============================================================ */
+
+.stat-card {
+  position: relative;
+  overflow: hidden;
+}
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 3px; height: 100%;
+  background: var(--card-accent, var(--accent));
+}
+.stat-card.green  { --card-accent: var(--success); }
+.stat-card.orange { --card-accent: var(--warning); }
+.stat-card.red    { --card-accent: var(--danger);  }
+
+/* Двоколонковий грід дашборду */
+.dash-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+@media (max-width: 900px) {
+  .dash-grid { grid-template-columns: 1fr; }
+}
+
+/* Елементи списку (клієнти, клуби) */
+.recent-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background .1s;
+}
+.recent-item:last-child { border-bottom: none; }
+.recent-item:hover {
+  background: var(--bg-hover);
+  margin: 0 -20px;
+  padding: 12px 20px;
+}
+
+.recent-avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.recent-name { font-size: 14px; font-weight: 500; }
+.recent-sub  { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+.recent-date { font-size: 12px; color: var(--text-muted); margin-left: auto; flex-shrink: 0; }
+
+/* SuperAdmin банер */
+.superadmin-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(79,156,249,.08);
+  border: 1px solid rgba(79,156,249,.25);
+  border-radius: var(--radius-md);
+  padding: 12px 18px;
+  margin-bottom: 24px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.superadmin-banner strong { color: var(--accent); }

@@ -1,0 +1,125 @@
+/* Вкладка "Підтримка" на об'єднаній сторінці Довідка+Підтримка (HelpPage.jsx) */
+
+.sup-subtitle {
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin: -8px 0 16px;
+}
+
+.sup-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.sup-empty {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 48px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.sup-list {
+  display: grid;
+  gap: 10px;
+}
+
+.sup-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  cursor: pointer;
+  transition: border-color .15s;
+}
+.sup-row:hover { border-color: var(--accent); }
+.sup-row-unread { border-color: rgba(79,156,249,.5); background: var(--accent-dim); }
+
+.sup-row-main { min-width: 0; }
+.sup-row-subject {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sup-row-club { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+.sup-unread-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+.sup-row-side {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.sup-row-time { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+
+.sup-thread-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.sup-thread-subject { font-size: 16px; font-weight: 600; }
+
+.sup-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 55vh;
+  overflow-y: auto;
+  margin-bottom: 16px;
+}
+
+.sup-msg { display: flex; }
+.sup-msg-mine { justify-content: flex-end; }
+.sup-msg-other { justify-content: flex-start; }
+
+.sup-msg-bubble {
+  max-width: min(520px, 80%);
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+}
+.sup-msg-mine .sup-msg-bubble {
+  background: var(--accent-dim);
+  border-color: rgba(79,156,249,.35);
+}
+
+.sup-msg-sender { font-size: 11px; font-weight: 600; color: var(--text-muted); margin-bottom: 3px; }
+.sup-msg-text { font-size: 14px; color: var(--text-primary); white-space: pre-wrap; word-break: break-word; }
+.sup-msg-time { font-size: 10px; color: var(--text-muted); margin-top: 5px; text-align: right; }
+
+.sup-reply {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+}
+.sup-reply textarea { flex: 1; margin: 0; }
+
+@media (max-width: 640px) {
+  .sup-row { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .sup-row-side { width: 100%; justify-content: space-between; }
+  .sup-thread-header { flex-direction: column; }
+  .sup-msg-bubble { max-width: 92%; }
+  .sup-reply { flex-direction: column; align-items: stretch; }
+}

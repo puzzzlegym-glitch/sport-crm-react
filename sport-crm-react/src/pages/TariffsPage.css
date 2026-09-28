@@ -1,0 +1,20 @@
+/* 1:1 з assets/css/tariffs.css (мобільний вигляд — через спільний Table.jsx) */
+.tariff-tr td { vertical-align: middle; }
+.tariff-tr.archived { opacity: .65; }
+.tariff-name { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+
+.prod-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.low-stock-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}

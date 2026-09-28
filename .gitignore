@@ -1,0 +1,29 @@
+# ── Конфігурація з паролями — НІКОЛИ не комітити! ────────
+config.php
+.env
+.env.*
+!.env.example
+
+# ── Залежності та збірки ─────────────────────────────────
+node_modules/
+vendor/
+dist/
+dist-ssr/
+*.local
+
+# ── Claude Code: локальні налаштування ───────────────────
+**/.claude/settings.local.json
+**/.claude/scheduled_tasks.lock
+
+# ── Логи ─────────────────────────────────────────────────
+*.log
+logs/
+
+# ── Системні файли та IDE ────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.suo
+*.sw?

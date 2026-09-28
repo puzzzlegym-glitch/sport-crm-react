@@ -1,0 +1,230 @@
+.settings-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .settings-grid { grid-template-columns: 1fr; }
+}
+
+.settings-section {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin-bottom: 20px;
+  min-width: 0;
+}
+
+/* ── Заголовок картки: іконка в боксі + назва/підзаголовок + кнопка ✎ ── */
+.settings-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+.settings-card-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.settings-card-heading { flex: 1; min-width: 0; }
+.settings-card-title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+.settings-card-subtitle { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+
+.settings-edit-btn {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color .15s, border-color .15s;
+}
+.settings-edit-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+/* ── Поля з іконкою-префіксом ─────────────────────────────────── */
+.input-icon-wrap { position: relative; display: block; }
+.input-icon-wrap .input-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.input-icon-wrap input,
+.input-icon-wrap select {
+  padding-left: 38px;
+}
+.input-icon-wrap select { appearance: none; padding-right: 34px; }
+.input-icon-wrap .input-caret {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.input-icon-wrap.has-eye input { padding-right: 38px; }
+.input-eye-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  border-radius: 4px;
+}
+.input-eye-btn:hover { color: var(--text-primary); }
+
+.input-icon-wrap input:read-only,
+.input-icon-wrap input:disabled {
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  cursor: default;
+}
+.input-icon-wrap select:disabled {
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  cursor: default;
+  opacity: 1;
+}
+
+.input-icon-wrap.has-error input {
+  border-color: var(--danger);
+}
+
+.save-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--success);
+  opacity: 0;
+  transition: opacity .3s;
+}
+.save-indicator.show { opacity: 1; }
+
+.settings-fields-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 14px;
+}
+@media (max-width: 600px) {
+  .settings-fields-2 { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 600px) {
+  .settings-section { padding: 16px; }
+}
+
+/* ── Підписка ──────────────────────────────────────────────────── */
+.sub-plan-card {
+  background: linear-gradient(135deg, var(--bg-elevated), var(--bg-hover));
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+.sub-plan-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.sub-plan-label { font-size: 12px; color: var(--text-secondary); }
+.sub-plan-name { font-size: 22px; font-weight: 700; color: var(--text-primary); }
+
+.sub-clients { padding: 4px 2px; }
+.sub-clients-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+.sub-clients-row strong { color: var(--text-primary); font-size: 14px; }
+.sub-progress {
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.sub-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width .3s;
+}
+.sub-clients-hint {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+
+/* ── Плашка безпеки ────────────────────────────────────────────── */
+.settings-security-note {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.settings-security-note svg { color: var(--success); flex-shrink: 0; }
+
+/* ── Іконки в кнопках таблиць/вкладок ─────────────────────────── */
+.icon-btn { display: inline-flex; align-items: center; justify-content: center; }
+.icon-btn-label { display: inline-flex; align-items: center; gap: 6px; }
+
+#tab-bar {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+#tab-bar::-webkit-scrollbar { display: none; }
+.fin-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 18px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color .12s, border-color .12s;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.fin-tab-btn:hover  { color: var(--text-primary); }
+.fin-tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }

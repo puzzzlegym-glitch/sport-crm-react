@@ -1,0 +1,79 @@
+/* ============================================================
+   mobile-cards.css — Універсальні картки замість таблиць
+   Підключається глобально через head.php
+   Використання: додати thead class="mob-hide" + td data-label="..."
+   ============================================================ */
+
+@media (max-width: 768px) {
+
+  /* Ховаємо thead на мобільному */
+  .table-wrap table thead.mob-hide { display: none; }
+
+  /* Кожен рядок — окрема картка */
+  .table-wrap table tbody tr {
+    display: block;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    margin-bottom: 10px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: background .12s;
+  }
+  .table-wrap table tbody tr:hover { background: var(--bg-hover); }
+
+  /* Кожна комірка — рядок у картці */
+  .table-wrap table tbody td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    gap: 8px;
+    min-width: 0;
+  }
+  .table-wrap table tbody td:last-child { border-bottom: none; padding-bottom: 0; }
+  .table-wrap table tbody td:first-child { padding-top: 0; }
+
+  /* Підпис поля з data-label */
+  .table-wrap table tbody td[data-label]::before {
+    content: attr(data-label);
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* td без підпису (кнопки дій, аватар-рядок) — ховаємо псевдоелемент */
+  .table-wrap table tbody td.mob-no-label::before { display: none; }
+  .table-wrap table tbody td.mob-no-label {
+    justify-content: flex-start;
+    border-bottom: none;
+    padding-top: 8px;
+  }
+
+  /* Прибираємо горизонтальний скрол — картки не потребують */
+  .table-wrap { overflow-x: visible; }
+  .table-wrap table { min-width: unset; width: 100%; }
+
+  /* Картка клієнта: перший td — ім'я + телефон без підпису */
+  .table-wrap table tbody td.mob-primary {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+    margin-bottom: 2px;
+    justify-content: flex-start;
+  }
+  .table-wrap table tbody td.mob-primary::before { display: none; }
+
+  /* Кнопки дій у картці */
+  .table-wrap table tbody td.mob-actions {
+    justify-content: flex-end;
+    border-bottom: none;
+    padding-top: 8px;
+  }
+  .table-wrap table tbody td.mob-actions::before { display: none; }
+}

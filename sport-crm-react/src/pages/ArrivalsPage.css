@@ -1,0 +1,199 @@
+/* Порт з assets/css/arrivals.css. Статистика (.arr-stats) не портується —
+   у оригіналі loadStats() є заглушкою, елементи видалено з розмітки. */
+
+.arr-toolbar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+}
+.arr-search-col { flex: 0 1 30%; min-width: 160px; }
+.arr-search-col .form-group,
+.arr-period-col .form-group { margin-bottom: 0; }
+.arr-period-col { flex: 0 0 auto; min-width: 150px; }
+.arr-add-btn { flex: 0 0 auto; }
+.arr-filters-col {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  padding-bottom: 2px;
+}
+
+.op-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.op-badge.arrival  { background: rgba(52,211,153,.12);  color: var(--success); }
+.op-badge.overdue  { background: rgba(248,113,113,.12); color: var(--danger);  }
+.op-badge.repack   { background: rgba(251,191,36,.12);  color: var(--warning); }
+.op-badge.transfer { background: rgba(136,135,128,.12); color: var(--text-secondary); }
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.status-badge.paid    { background: rgba(52,211,153,.12);  color: var(--success); }
+.status-badge.unpaid  { background: rgba(248,113,113,.12); color: var(--danger);  }
+.status-badge.pending { background: rgba(251,191,36,.12);  color: var(--warning); }
+
+.qty-plus  { color: var(--success); font-weight: 600; }
+.qty-minus { color: var(--danger);  font-weight: 600; }
+.qty-wait  { color: var(--warning); font-weight: 600; }
+
+.confirm-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all .12s;
+  white-space: nowrap;
+}
+.confirm-btn:hover {
+  border-color: var(--success);
+  color: var(--success);
+  background: rgba(52,211,153,.08);
+}
+.confirm-btn.danger:hover { border-color: var(--danger); color: var(--danger); background: rgba(248,113,113,.08); }
+
+.confirm-status-btns {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.csb {
+  flex: 1;
+  min-width: 120px;
+  padding: 10px 14px;
+  border: 2px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all .12s;
+  text-align: center;
+}
+.csb:hover { border-color: var(--accent); color: var(--text-primary); }
+.csb.active[data-s="paid"]   { border-color: var(--success); background: rgba(52,211,153,.1); color: var(--success); }
+.csb.active[data-s="unpaid"] { border-color: var(--danger);  background: rgba(248,113,113,.1); color: var(--danger); }
+
+.op-filter-btn {
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all .12s;
+  white-space: nowrap;
+}
+.op-filter-btn:hover  { border-color: var(--accent); color: var(--accent); }
+.op-filter-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+
+.arr-op-btn, .arr-status-btn {
+  padding: 7px 13px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all .12s;
+  white-space: nowrap;
+}
+.arr-op-btn:hover, .arr-status-btn:hover { border-color: var(--accent); color: var(--text-primary); }
+.arr-op-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); font-weight: 500; }
+.arr-status-btn.active[data-status="paid"]    { background: rgba(52,211,153,.12); border-color: var(--success); color: var(--success); }
+.arr-status-btn.active[data-status="unpaid"]  { background: rgba(248,113,113,.12); border-color: var(--danger); color: var(--danger); }
+.arr-status-btn.active[data-status="pending"] { background: rgba(251,191,36,.12); border-color: var(--warning); color: var(--warning); }
+
+/* ── Картка перегляду запису приходу ─────────────────────── */
+.arr-detail-header {
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.arr-detail-name { font-size: 17px; font-weight: 600; line-height: 1.3; }
+.arr-detail-badges { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.arr-detail-badges .op-badge, .arr-detail-badges .status-badge { font-size: 12px; padding: 3px 10px; }
+
+.arr-sum-strip {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 16px;
+  background: rgba(52,211,153,.1);
+}
+.arr-sum-strip.minus { background: rgba(248,113,113,.1); }
+.arr-sum-strip.wait  { background: rgba(251,191,36,.1); }
+.arr-sum-qty { font-size: 13px; color: var(--text-secondary); }
+.arr-sum-total { font-size: 17px; font-weight: 700; color: var(--success); }
+.arr-sum-strip.minus .arr-sum-total { color: var(--danger); }
+.arr-sum-strip.wait .arr-sum-total  { color: var(--warning); }
+
+/* .detail-fields-grid/.detail-field — спільні в admin.css (DetailFieldsGrid) */
+
+/* Мобільний — просто, компактно, без зайвого */
+@media (max-width: 768px) {
+  .arr-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .arr-search-col, .arr-period-col {
+    max-width: none;
+    min-width: 0;
+    width: 100%;
+  }
+  .arr-search-col .form-group label,
+  .arr-period-col .form-group label {
+    display: none;
+  }
+  .arr-add-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  .arr-filters-col {
+    flex: 0 0 auto;
+    width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    justify-content: flex-start;
+    margin-left: 0;
+    padding-bottom: 4px;
+  }
+  .op-filter-btn {
+    flex-shrink: 0;
+  }
+}

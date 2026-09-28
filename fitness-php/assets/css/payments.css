@@ -1,0 +1,86 @@
+/* ============================================================
+   payments.css — стилі сторінки оплат
+   ============================================================ */
+
+.pay-toolbar {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  margin-bottom: 16px;
+}
+
+/* Підсумок */
+.pay-summary-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 16px;
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+.pay-sum-total  { font-weight: 600; white-space: nowrap; }
+.pay-sum-chips  { display: flex; flex-wrap: wrap; gap: 8px; }
+.pay-sum-chip   { display: flex; align-items: center; gap: 5px; }
+
+/* Бейдж методу оплати */
+.pay-method-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .2px;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+}
+.pay-method-cash     { background: rgba(52,211,153,.12); color: #34d399; }
+.pay-method-card     { background: rgba(79,156,249,.12); color: #4f9cf9; }
+.pay-method-terminal { background: rgba(167,139,250,.12); color: #a78bfa; }
+.pay-method-deposit  { background: rgba(251,191,36,.12);  color: #f59e0b; }
+.pay-method-transfer { background: rgba(99,102,241,.12);  color: #818cf8; }
+.pay-method-free     { background: rgba(156,163,175,.12); color: #9ca3af; }
+
+/* ── Мобільні картки оплат ──────────────────────────────── */
+#pay-cards { display: none; }
+
+.pay-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin-bottom: 8px;
+}
+.pay-card-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.pay-card-client { flex: 1; min-width: 0; }
+.pay-card-name   { font-size: 14px; font-weight: 600; }
+.pay-card-sub    { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.pay-card-right  { flex-shrink: 0; text-align: right; }
+.pay-card-amount { font-size: 16px; font-weight: 700; color: var(--success); white-space: nowrap; }
+
+.pay-card-meta {
+  margin-top: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-start;
+}
+.pay-card-tariff  { font-size: 12px; color: var(--text-muted); }
+.pay-card-trainer { font-size: 12px; color: var(--text-secondary); }
+.pay-card-time    { font-size: 11px; color: var(--text-muted); text-align: right; margin-top: 4px; }
+
+.pay-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+.pay-card-actions { display: flex; gap: 4px; }

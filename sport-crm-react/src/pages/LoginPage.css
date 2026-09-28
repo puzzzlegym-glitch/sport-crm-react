@@ -1,0 +1,27 @@
+.login-page{display:flex;align-items:center;justify-content:center;min-height:100vh}
+.login-wrap{width:100%;max-width:400px;padding:24px;margin:0 auto}
+.login-logo{text-align:center;margin-bottom:32px}
+.login-logo .logo-text{font-size:26px;font-weight:700;letter-spacing:-1px;color:var(--text-primary)}
+.login-logo .logo-text span{color:var(--accent)}
+.login-logo .logo-sub{font-size:13px;color:var(--text-muted);margin-top:4px}
+.login-card{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:32px;box-shadow:var(--shadow-md)}
+.login-card h1{font-size:18px;font-weight:600;margin-bottom:6px}
+.login-card .subtitle{font-size:13px;color:var(--text-muted);margin-bottom:28px}
+.btn-login{width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;transition:background .15s;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-login:hover:not(:disabled){background:var(--accent-hover)}
+.btn-login:disabled{opacity:.7;cursor:not-allowed}
+.error-box{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);border-radius:var(--radius-sm);padding:10px 14px;font-size:13px;color:var(--danger);margin-bottom:16px;display:none}
+.error-box.show{display:block}
+.input-wrap{position:relative}
+.input-wrap input{padding-right:40px}
+.toggle-pwd{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-muted);cursor:pointer;padding:4px;font-size:15px}
+.toggle-pwd:hover{color:var(--text-secondary)}
+.login-footer{text-align:center;margin-top:24px;font-size:12px;color:var(--text-muted)}
+.login-actions{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-top:18px;font-size:13px}
+.login-actions a{color:#4f9cf9;font-weight:500;text-decoration:none}
+.login-actions a:hover{text-decoration:underline}
+
+.auth-msg-box{background:rgba(79,156,249,.1);border:1px solid rgba(79,156,249,.3);border-radius:var(--radius-sm);padding:10px 14px;font-size:13px;color:var(--text-primary);margin-bottom:16px}
+.back-to-login{text-align:center;margin-top:18px;font-size:13px}
+.back-to-login a{color:#4f9cf9;font-weight:500;text-decoration:none}
+.back-to-login a:hover{text-decoration:underline}

@@ -1,0 +1,43 @@
+/* 1:1 з assets/css/payments.css (без #pay-cards/.pay-card-* — мобільний вигляд
+   тепер через спільний Table.jsx + mobile-cards.css) */
+
+.pay-toolbar {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  margin-bottom: 16px;
+}
+
+.pay-summary-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 16px;
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+.pay-sum-total { font-weight: 600; white-space: nowrap; }
+.pay-sum-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.pay-sum-chip  { display: flex; align-items: center; gap: 5px; }
+
+.pay-method-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .2px;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+}
+.pay-method-cash     { background: rgba(52,211,153,.12); color: #34d399; }
+.pay-method-card     { background: rgba(79,156,249,.12); color: #4f9cf9; }
+.pay-method-terminal { background: rgba(167,139,250,.12); color: #a78bfa; }
+.pay-method-deposit  { background: rgba(251,191,36,.12);  color: #f59e0b; }
+.pay-method-transfer { background: rgba(99,102,241,.12);  color: #818cf8; }
+.pay-method-free     { background: rgba(156,163,175,.12); color: #9ca3af; }

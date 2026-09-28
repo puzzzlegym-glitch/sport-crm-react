@@ -1,0 +1,70 @@
+/* ============================================================
+   tariffs.css — стилі сторінки тарифів
+   ============================================================ */
+
+.tariff-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.tariff-stat {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  position: relative;
+  overflow: hidden;
+}
+.tariff-stat::before {
+  content: '';
+  position: absolute; top: 0; left: 0;
+  width: 3px; height: 100%;
+  background: var(--ts-accent, var(--accent));
+}
+.tariff-stat.green { --ts-accent: var(--success); }
+.tariff-stat.blue  { --ts-accent: #60a5fa; }
+.ts-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .3px; }
+.ts-value { font-size: 22px; font-weight: 700; margin: 4px 0 2px; }
+.ts-sub   { font-size: 12px; color: var(--text-secondary); }
+
+/* Таблиця тарифів (ПК) */
+.tariff-tr { transition: background .1s; }
+.tariff-tr:hover { background: var(--bg-hover); }
+.tariff-tr.archived { opacity: .65; }
+.tariff-tr td { vertical-align: middle; padding: 12px 14px; }
+.tariff-name { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+.tariff-tr { border-left: 3px solid var(--t-color, var(--accent)); }
+
+/* ── Мобільні картки (div) ─────────────────────────────── */
+#tariffs-cards { display: none; }
+
+.tariff-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius-md);
+  margin-bottom: 10px;
+  padding: 14px 16px;
+  transition: background .1s;
+}
+.tariff-card.archived { opacity: .65; }
+.tariff-card-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.tariff-card-left  { flex: 1; min-width: 0; }
+.tariff-card-title {
+  font-size: 14px; font-weight: 600;
+  display: flex; align-items: center; flex-wrap: wrap; gap: 5px;
+  margin-bottom: 4px;
+}
+.tariff-card-meta  { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+.tariff-card-stats { font-size: 12px; color: var(--text-secondary); }
+.tariff-card-stats strong { color: var(--text-primary); }
+.tariff-card-right { text-align: right; flex-shrink: 0; }
+.tariff-card-price { font-size: 18px; font-weight: 700; color: var(--accent); white-space: nowrap; margin-bottom: 8px; }
+.tariff-card-actions { display: flex; gap: 4px; justify-content: flex-end; }
+

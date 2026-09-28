@@ -1,0 +1,291 @@
+/* ============================================================
+   invoices.css — стилі сторінки абонементів
+   ============================================================ */
+
+/* Фільтри */
+.inv-toolbar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+  max-width: 340px;
+}
+.search-wrap input { padding-left: 36px; }
+.search-icon {
+  position: absolute;
+  left: 11px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 14px;
+  pointer-events: none;
+}
+.inv-filter-btn {
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all .12s;
+  white-space: nowrap;
+}
+.inv-filter-btn:hover  { border-color: var(--accent); color: var(--accent); }
+.inv-filter-btn.active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Картка клієнта у таблиці */
+.inv-client-info  { display: flex; flex-direction: column; }
+.inv-client-name  { font-weight: 500; font-size: 14px; }
+.inv-client-phone { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+
+/* Тариф */
+.inv-tariff-name {
+  font-size: 14px;
+  font-weight: 500;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.inv-tariff-dates {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Дні залишилось */
+.days-left { font-size: 13px; }
+.days-left.ok      { color: var(--success); }
+.days-left.warn    { color: var(--warning); }
+.days-left.danger  { color: var(--danger);  }
+.days-left.expired { color: var(--text-muted); }
+
+/* Борг */
+.debt-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  background: rgba(248,113,113,.12);
+  color: var(--danger);
+}
+
+/* Статистичні картки */
+.inv-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.inv-stat {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  position: relative;
+  overflow: hidden;
+}
+.inv-stat::before {
+  content: '';
+  position: absolute; top: 0; left: 0;
+  width: 3px; height: 100%;
+  background: var(--is-accent, var(--accent));
+}
+.inv-stat.green  { --is-accent: var(--success); }
+.inv-stat.orange { --is-accent: var(--warning); }
+.inv-stat.red    { --is-accent: var(--danger);  }
+.inv-stat.purple { --is-accent: #c4b5fd; }
+.is-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .3px; }
+.is-value { font-size: 22px; font-weight: 700; margin: 4px 0 2px; }
+.is-sub   { font-size: 12px; color: var(--text-secondary); }
+
+/* Модалка: Форма продажу */
+.tariff-picker {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 4px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+@media (max-width: 500px) { .tariff-picker { grid-template-columns: 1fr; } }
+
+.tariff-card {
+  border: 2px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: border-color .12s, background .12s;
+}
+.tariff-card:hover   { border-color: var(--accent); }
+.tariff-card.selected {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+.tc-name  { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.tc-price { font-size: 18px; font-weight: 700; color: var(--accent); }
+.tc-meta  { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+/* Підсумок форми продажу */
+.sale-summary {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  margin: 16px 0;
+}
+.sale-summary-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  padding: 4px 0;
+}
+.sale-summary-row.total {
+  font-weight: 600;
+  font-size: 16px;
+  padding-top: 10px;
+  margin-top: 6px;
+  border-top: 1px solid var(--border);
+}
+.debt-warn {
+  font-size: 12px;
+  color: var(--warning);
+  margin-top: 4px;
+}
+
+/* Модалка: Деталі абонементу */
+.inv-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+.inv-detail-row:last-child { border-bottom: none; }
+.inv-detail-label { color: var(--text-secondary); font-size: 13px; }
+
+/* Вкладки модалки деталей абонементу */
+.inv-modal-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.inv-modal-tabs::-webkit-scrollbar { display: none; }
+.inv-modal-tab-btn {
+  padding: 9px 16px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  transition: color .12s, background .12s, border-color .12s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.inv-modal-tab-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+.inv-modal-tab-btn.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  background: var(--accent-dim);
+}
+
+/* Платіж у модалці */
+.payment-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.payment-item:last-child { border-bottom: none; }
+.payment-method-badge {
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: .3px;
+}
+
+/* Прогрес відвідувань */
+.visits-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+.visits-bar-track {
+  flex: 1;
+  height: 5px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+  max-width: 120px;
+}
+.visits-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--accent);
+  transition: width .4s;
+}
+
+/* ── Мобільна картка абонементу ─────────────────────────── */
+.inv-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: background .1s;
+}
+.inv-card:hover { background: var(--bg-hover); }
+.inv-card-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.inv-card-left  { flex: 1; min-width: 0; }
+.inv-card-client {
+  font-size: 14px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.inv-card-sub {
+  font-size: 11px; color: var(--text-muted); margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.inv-card-right {
+  display: flex; flex-direction: column;
+  align-items: flex-end; gap: 3px; flex-shrink: 0;
+}
+.inv-card-pay { font-size: 12px; color: var(--text-secondary); }
+.inv-card-actions { display: flex; gap: 2px; margin-top: 2px; }

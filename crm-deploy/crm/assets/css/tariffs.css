@@ -1,0 +1,79 @@
+/* ============================================================
+   tariffs.css — стилі сторінки тарифів
+   ============================================================ */
+
+.tariff-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.tariff-stat {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  position: relative;
+  overflow: hidden;
+}
+.tariff-stat::before {
+  content: '';
+  position: absolute; top: 0; left: 0;
+  width: 3px; height: 100%;
+  background: var(--ts-accent, var(--accent));
+}
+.tariff-stat.green { --ts-accent: var(--success); }
+.tariff-stat.blue  { --ts-accent: #60a5fa; }
+.ts-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .3px; }
+.ts-value { font-size: 22px; font-weight: 700; margin: 4px 0 2px; }
+.ts-sub   { font-size: 12px; color: var(--text-secondary); }
+
+/* Сітка тарифів */
+.tariff-grid { display: flex; flex-direction: column; gap: 10px; }
+
+.tariff-row {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  transition: border-color .12s;
+}
+.tariff-row:hover { border-color: var(--border-light); }
+.tariff-row.archived { opacity: .65; }
+
+.tariff-row-main {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+.tariff-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.tariff-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+.tariff-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+  max-width: 420px;
+}
+.tariff-row-stats {
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.tariff-row-stats strong { color: var(--text-primary); }
+
+.tariff-price {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--accent);
+  white-space: nowrap;
+}

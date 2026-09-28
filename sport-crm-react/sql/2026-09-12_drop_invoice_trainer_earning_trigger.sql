@@ -1,0 +1,15 @@
+-- trg_invoice_trainer_earning (AFTER UPDATE ON client_invoices) — видаляємо,
+-- логіку перенесено в Recalc::unlockInvoiceTrainerEarnings() (PHP).
+--
+-- На відміну від trg_visit_trainer_earning (видалено окремою міграцією як
+-- мертвий код), цей тригер БУВ живий — розблоковує trainer_earnings для
+-- release_trigger='on_visits_done'/'on_end_date' (коли абонемент завершується)
+-- і 'on_sale' (коли абонемент стає активним). Перевірено емпірично на
+-- локальному стенді 2026-09-12: тимчасово увімкнено release_trigger=
+-- 'on_visits_done' на тестовому тарифі, тригер видалено ЛОКАЛЬНО, записано
+-- відвідування через реальний API — Recalc::unlockInvoiceTrainerEarnings()
+-- (викликається з invoiceVisitsUsed()/invoiceStatus() та з усіх прямих
+-- UPDATE client_invoices у invoices_api.php: cancel/restore/freeze/
+-- unfreeze/cancel_freeze/update_freeze_days/edit) коректно розблокував
+-- нарахування — так само перевірено і для 'on_sale' через дію "restore".
+DROP TRIGGER IF EXISTS trg_invoice_trainer_earning;

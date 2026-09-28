@@ -1,0 +1,174 @@
+/* ============================================================
+   mobile-cards.css — Універсальні картки замість таблиць
+   Підключається глобально через head.php
+   Використання: додати thead class="mob-hide" + td data-label="..."
+   ============================================================ */
+
+@media (max-width: 768px) {
+
+  /* Ховаємо thead на мобільному */
+  .table-wrap table thead.mob-hide { display: none; }
+
+  /* Кожен рядок — окрема картка */
+  .table-wrap table tbody tr {
+    display: block;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    margin-bottom: 10px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: background .12s;
+  }
+  .table-wrap table tbody tr:hover { background: var(--bg-hover); }
+
+  /* Кожна комірка — рядок у картці */
+  .table-wrap table tbody td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    gap: 8px;
+    min-width: 0;
+  }
+  .table-wrap table tbody td:last-child { border-bottom: none; padding-bottom: 0; }
+  .table-wrap table tbody td:first-child { padding-top: 0; }
+
+  /* Підпис поля з data-label */
+  .table-wrap table tbody td[data-label]::before {
+    content: attr(data-label);
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* td без підпису (кнопки дій, аватар-рядок) — ховаємо псевдоелемент */
+  .table-wrap table tbody td.mob-no-label::before { display: none; }
+  .table-wrap table tbody td.mob-no-label {
+    justify-content: flex-start;
+    border-bottom: none;
+    padding-top: 8px;
+  }
+
+  /* Прибираємо горизонтальний скрол — картки не потребують */
+  .table-wrap { overflow-x: visible; }
+  .table-wrap table { min-width: unset; width: 100%; }
+
+  /* Картка клієнта: перший td — ім'я + телефон без підпису */
+  .table-wrap table tbody td.mob-primary {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+    margin-bottom: 2px;
+    justify-content: flex-start;
+  }
+  .table-wrap table tbody td.mob-primary::before { display: none; }
+
+  /* Кнопки дій у картці */
+  .table-wrap table tbody td.mob-actions {
+    justify-content: flex-end;
+    border-bottom: none;
+    padding-top: 8px;
+  }
+  .table-wrap table tbody td.mob-actions::before { display: none; }
+}
+
+  /* Колонки приховані на мобільному (th і td) */
+  .table-wrap table th.mob-hide,
+  .table-wrap table td.mob-hide {
+    display: none !important;
+  }
+
+/* ── Компактні картки: десктоп ───────────────────────────── */
+.cc-card          { display: none; }   /* приховано на десктопі */
+.cc-desktop-name  { display: inline; } /* назва у звичайній td */
+
+/* ── Компактні картки: мобільний ────────────────────────── */
+@media (max-width: 768px) {
+
+  .cc-desktop-name { display: none !important; }
+
+  .cc-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+  }
+
+  /* Фото */
+  .cc-photo {
+    width: 40px; height: 40px;
+    border-radius: var(--radius-sm);
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 1px solid var(--border);
+  }
+  .cc-photo-placeholder {
+    width: 40px; height: 40px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+  }
+
+  /* Текст */
+  .cc-body { flex: 1; min-width: 0; }
+  .cc-title {
+    font-size: 13px; font-weight: 600;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .cc-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+  /* Права частина */
+  .cc-right { text-align: right; flex-shrink: 0; }
+  .cc-amount { font-size: 14px; font-weight: 700; }
+  .cc-badge  { margin-top: 3px; }
+
+  /* Кнопки */
+  .cc-actions { display: flex; gap: 4px; flex-shrink: 0; }
+
+  /* Картка-рядок */
+  .compact-card-table thead { display: none !important; }
+  .compact-card-table,
+  .compact-card-table tbody { display: block; }
+
+  .compact-card-table tbody tr {
+    display: flex !important;
+    align-items: center;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--border);
+    border-radius: var(--radius-md);
+    margin-bottom: 8px;
+    padding: 10px 12px;
+  }
+
+  /* Кольорова смуга */
+  .compact-card-table tbody tr[data-color="cash"]     { border-left-color: #4ade80; }
+  .compact-card-table tbody tr[data-color="card"]     { border-left-color: #818cf8; }
+  .compact-card-table tbody tr[data-color="terminal"] { border-left-color: #fbbf24; }
+  .compact-card-table tbody tr[data-color="deposit"]  { border-left-color: #c084fc; }
+  .compact-card-table tbody tr[data-color="arrival"]  { border-left-color: #4ade80; }
+  .compact-card-table tbody tr[data-color="overdue"]  { border-left-color: #f87171; }
+  .compact-card-table tbody tr[data-color="repack"]   { border-left-color: #fbbf24; }
+  .compact-card-table tbody tr[data-color="transfer"] { border-left-color: #94a3b8; }
+
+  /* Перший td — займає весь рядок */
+  .compact-card-table tbody td:first-child {
+    display: block !important;
+    flex: 1; min-width: 0;
+    padding: 0 !important;
+    border: none !important;
+  }
+  /* Решта td — приховані */
+  .compact-card-table tbody td:not(:first-child) {
+    display: none !important;
+  }
+  .compact-card-table tbody td::before { display: none !important; }
+}

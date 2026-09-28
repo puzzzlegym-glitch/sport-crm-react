@@ -1,0 +1,155 @@
+/* 1:1 з assets/css/clients.css (таблиця/пагінація/форма-модалка — спільні компоненти) */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 180px;
+  max-width: 360px;
+}
+.search-wrap input { padding-left: 36px; }
+.search-icon {
+  position: absolute;
+  left: 11px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 14px;
+  pointer-events: none;
+}
+.filter-select { width: auto; min-width: 130px; }
+
+.client-avatar {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-size: 13px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid rgba(79,156,249,.3);
+}
+.client-info  { display: flex; align-items: center; gap: 10px; }
+.client-name  { font-weight: 500; font-size: 14px; }
+.client-phone { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+
+.tariff-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 11px; font-weight: 500;
+  background: var(--accent-dim);
+  color: var(--accent);
+  max-width: 160px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.tariff-expire         { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.tariff-expire.soon    { color: var(--warning); }
+.tariff-expire.expired { color: var(--danger); }
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 16px;
+}
+@media (max-width: 380px) {
+  .form-row { grid-template-columns: 1fr; }
+}
+
+/* Вкладки та поля картки перегляду — спільні .modal-tabs/.modal-tab-body/.detail-fields-grid в admin.css */
+
+.client-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.client-detail-avatar {
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-size: 20px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid rgba(79,156,249,.3);
+  flex-shrink: 0;
+}
+.view-client-name { font-size: 17px; font-weight: 600; line-height: 1.3; }
+
+.client-actions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.client-actions-grid .btn {
+  justify-content: center;
+  font-size: 13px;
+  padding: 10px 8px;
+  white-space: nowrap;
+}
+
+/* Імпорт клієнтів з Excel */
+.import-dropzone {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px;
+  padding: 40px 20px;
+  border: 1.5px dashed var(--border-light);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color .15s, background .15s, color .15s;
+}
+.import-dropzone:hover,
+.import-dropzone.dragging {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+.import-dropzone-title { font-size: 14px; font-weight: 500; color: var(--text-primary); }
+
+.import-mapping {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px 12px;
+  margin-bottom: 14px;
+  padding: 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.import-mapping-field label { display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+.import-mapping-field select { width: 100%; font-size: 12px; }
+
+.import-summary { font-size: 13px; margin-bottom: 10px; }
+
+.import-preview-wrap {
+  max-height: 340px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.import-preview-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.import-preview-table th {
+  position: sticky; top: 0;
+  text-align: left;
+  padding: 8px 10px;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-light);
+  white-space: nowrap;
+}
+.import-preview-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.import-preview-table tr.row-error td { background: rgba(248,113,113,.06); }
+.import-preview-table tr:last-child td { border-bottom: none; }

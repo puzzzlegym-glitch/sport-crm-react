@@ -1,0 +1,175 @@
+/* ============================================================
+   dashboard.css
+   ============================================================ */
+
+/* Верхня панель: перемикачі + зміна */
+.db-top-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  margin-bottom: 20px;
+}
+
+/* Перемикач періоду (select) */
+.db-period-select {
+  padding: 7px 8px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  flex: 0 0 auto;
+  max-width: 130px;
+}
+.db-period-select:focus { border-color: var(--accent); }
+
+/* Банер зміни */
+.db-shift-banner {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.db-shift-banner.db-shift-open   { border-color: var(--success); background: rgba(52,211,153,.08); color: var(--success); }
+.db-shift-banner.db-shift-closed { background: var(--bg-elevated); color: var(--text-secondary); }
+.db-shift-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.db-shift-open   .db-shift-dot { background: var(--success); box-shadow: 0 0 6px var(--success); }
+.db-shift-closed .db-shift-dot { background: var(--danger); }
+.db-shift-text { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.db-shift-action {
+  margin-left: auto;
+  font-size: 11px;
+  opacity: .7;
+  flex-shrink: 0;
+  padding-left: 4px;
+}
+
+/* Сітка 3×2 */
+.db-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+@media (max-width: 720px) {
+  .db-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+}
+@media (max-width: 420px) {
+  .db-period-select { font-size: 12px; max-width: 110px; }
+  .db-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+}
+
+/* Картка */
+.db-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 12px 8px;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: border-color .15s, box-shadow .15s;
+  position: relative;
+  overflow: hidden;
+}
+.db-card:hover       { border-color: var(--accent); box-shadow: 0 2px 12px rgba(0,0,0,.1); }
+.db-card-active      { border-color: var(--accent) !important; box-shadow: 0 0 0 2px rgba(79,156,249,.2); }
+
+.db-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.db-card-icon  { font-size: 18px; line-height: 1; }
+
+/* Delta */
+.db-card-delta {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 20px;
+  line-height: 1.4;
+}
+.db-card-delta.up   { background: rgba(52,199,89,.15);  color: var(--success); }
+.db-card-delta.down { background: rgba(255,59,48,.12);  color: var(--danger);  }
+
+.db-card-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+.db-card-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.db-card-value.neg { color: var(--danger); }
+.db-card-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Sparkline */
+.db-spark {
+  display: block;
+  width: 100%;
+  height: 20px;
+  margin-top: 6px;
+  opacity: .7;
+}
+
+/* Bar chart */
+.db-chart-wrap {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+}
+.db-chart-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+.db-chart-inner { width: 100%; overflow-x: auto; }
+.db-chart-svg   { display: block; }
+
+.db-bar      { fill: var(--accent); opacity: .75; transition: opacity .15s; }
+.db-bar:hover{ opacity: 1; }
+.db-axis-lbl {
+  font-size: 10px;
+  fill: var(--text-muted);
+  font-family: inherit;
+}

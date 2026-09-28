@@ -1,0 +1,182 @@
+/* ============================================================
+   cash.css — Каса готівки
+   ============================================================ */
+
+/* ── Панель зміни ────────────────────────────────────────── */
+.shift-panel {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px 20px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  margin-bottom: 20px;
+  transition: border-color .2s, background .2s;
+}
+
+.shift-panel.shift-open   { border-color: var(--success); background: rgba(52,211,153,.06); }
+.shift-panel.shift-closed { border-color: var(--border);  background: var(--bg-surface); }
+
+.shift-panel-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.shift-panel-balances {
+  display: flex;
+  gap: 20px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.shift-panel-balances strong { color: var(--text-primary); }
+
+.shift-panel-actions { margin-left: auto; display: flex; gap: 8px; }
+
+.btn-sm { padding: 6px 14px; font-size: 13px; }
+.btn-success { background: var(--success); color: #fff; border: none; border-radius: var(--radius); cursor: pointer; font-weight: 600; transition: opacity .15s; }
+.btn-success:hover { opacity: .85; }
+.btn-warning { background: var(--warning); color: #1a1a1a; border: none; border-radius: var(--radius); cursor: pointer; font-weight: 600; transition: opacity .15s; }
+.btn-warning:hover { opacity: .85; }
+
+/* ── Картки балансу ─────────────────────────────────────── */
+.cash-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.cash-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.cash-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0;
+  width: 4px; height: 100%;
+  background: var(--cc-color, var(--accent));
+}
+
+.cash-card.balance  { --cc-color: var(--accent); }
+.cash-card.safe     { --cc-color: var(--text-muted); }
+.cash-card.income   { --cc-color: var(--success); }
+.cash-card.expense  { --cc-color: var(--danger); }
+.cash-card.profit   { --cc-color: var(--warning); }
+
+.cash-card-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.cash-card-value {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.1;
+}
+
+.cash-card.balance .cash-card-value { color: var(--accent); }
+.cash-card.income  .cash-card-value { color: var(--success); }
+.cash-card.expense .cash-card-value { color: var(--danger); }
+
+.cash-card-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* ── Тулбар ─────────────────────────────────────────────── */
+.cash-toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.cash-toolbar .form-group { margin: 0; }
+
+.cash-toolbar-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* ── Фільтр типу ─────────────────────────────────────────── */
+.cash-filter-bar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.cash-filter-btn {
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all .12s;
+}
+
+.cash-filter-btn:hover { color: var(--text-primary); border-color: var(--accent); }
+.cash-filter-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* ── Рядки журналу ───────────────────────────────────────── */
+.cash-row-income       { border-left: 3px solid var(--success); }
+.cash-row-expense      { border-left: 3px solid var(--danger); }
+.cash-row-encashment   { border-left: 3px solid var(--warning); }
+.cash-row-transfer_in  { border-left: 3px solid var(--success); }
+.cash-row-transfer_out { border-left: 3px solid var(--warning); }
+.cash-row-adjustment   { border-left: 3px solid var(--text-muted); }
+
+.cash-amount-income       { color: var(--success); font-weight: 600; }
+.cash-amount-expense      { color: var(--danger);  font-weight: 600; }
+.cash-amount-encashment   { color: var(--warning); font-weight: 600; }
+.cash-amount-transfer_in  { color: var(--success); font-weight: 600; }
+.cash-amount-transfer_out { color: var(--warning); font-weight: 600; }
+.cash-amount-adjustment   { color: var(--text-muted); font-weight: 600; }
+
+.cash-type-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.cash-type-badge.income       { background: rgba(52,211,153,.12);  color: var(--success); }
+.cash-type-badge.expense      { background: rgba(248,113,113,.12); color: var(--danger); }
+.cash-type-badge.encashment   { background: rgba(251,191,36,.12);  color: var(--warning); }
+.cash-type-badge.transfer_in  { background: rgba(52,211,153,.12);  color: var(--success); }
+.cash-type-badge.transfer_out { background: rgba(251,191,36,.12);  color: var(--warning); }
+.cash-type-badge.adjustment   { background: rgba(148,163,184,.15); color: var(--text-muted); }
+
+/* ── Мобільні ────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .shift-panel { flex-direction: column; align-items: flex-start; }
+  .shift-panel-actions { margin-left: 0; }
+  .cash-summary { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .cash-card { padding: 14px 16px; }
+  .cash-card-value { font-size: 20px; }
+  .cash-toolbar { gap: 8px; }
+  .cash-toolbar-actions { margin-left: 0; width: 100%; }
+  .cash-toolbar-actions .btn { flex: 1; }
+}

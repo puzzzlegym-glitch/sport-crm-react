@@ -1,0 +1,158 @@
+/* ============================================================
+   register.css — стилі публічної сторінки реєстрації
+   ============================================================ */
+
+.reg-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+.reg-logo {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -1px;
+}
+.reg-logo span { color: var(--accent); }
+.reg-tagline {
+  color: var(--text-muted);
+  font-size: 15px;
+  margin-top: 6px;
+}
+
+/* Двоколонковий грід: плани + форма */
+.reg-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 700px) {
+  .reg-grid { grid-template-columns: 1fr; }
+}
+
+/* Картки планів */
+.plan-cards { display: flex; flex-direction: column; gap: 10px; }
+.plan-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+  cursor: pointer;
+  transition: border-color .15s;
+  position: relative;
+}
+.plan-card:hover         { border-color: var(--accent); }
+.plan-card.featured      {
+  border-color: var(--accent);
+  background: rgba(79,156,249,.05);
+}
+.plan-featured-badge {
+  position: absolute;
+  top: -10px; left: 20px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 20px;
+}
+.plan-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.plan-name  { font-size: 15px; font-weight: 600; }
+.plan-price { font-size: 18px; font-weight: 700; color: var(--accent); }
+.plan-price span { font-size: 12px; font-weight: 400; color: var(--text-muted); }
+.plan-features { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.plan-feature  { font-size: 12px; color: var(--text-secondary); display: flex; gap: 6px; }
+.plan-feature::before { content: '✓'; color: var(--success); flex-shrink: 0; }
+
+/* Форма реєстрації */
+.reg-form-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+}
+.reg-form-title { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+.reg-form-sub   { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; }
+
+.form-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 14px;
+}
+@media (max-width: 500px) {
+  .form-row-2 { grid-template-columns: 1fr; }
+}
+
+/* Індикатор сили пароля */
+.pwd-strength {
+  height: 3px;
+  border-radius: 2px;
+  margin-top: 6px;
+  background: var(--border);
+  overflow: hidden;
+}
+.pwd-strength-bar {
+  height: 100%;
+  width: 0;
+  transition: width .3s, background .3s;
+  border-radius: 2px;
+}
+.pwd-hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+/* Статус email */
+.email-status       { font-size: 12px; margin-top: 4px; height: 16px; }
+.email-status.ok    { color: var(--success); }
+.email-status.err   { color: var(--danger); }
+
+/* Кнопка реєстрації */
+.btn-register {
+  width: 100%;
+  padding: 13px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .15s;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.btn-register:hover:not(:disabled) { background: var(--accent-hover); }
+.btn-register:disabled             { opacity: .7; cursor: not-allowed; }
+
+/* Тріал бейдж */
+.trial-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(52,211,153,.08);
+  border: 1px solid rgba(52,211,153,.25);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--success);
+  margin-bottom: 20px;
+}
+
+/* Екран успіху */
+.success-screen {
+  display: none;
+  text-align: center;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 48px 32px;
+}
+.success-icon   { font-size: 52px; margin-bottom: 16px; }
+.success-screen h2 { font-size: 22px; font-weight: 600; margin-bottom: 10px; }
+.success-screen p  { color: var(--text-secondary); font-size: 15px; line-height: 1.6; }

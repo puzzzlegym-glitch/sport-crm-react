@@ -1,0 +1,165 @@
+.badge-cash     { background: rgba(34,197,94,.15);  color: #4ade80; }
+.badge-card     { background: rgba(99,102,241,.15); color: #818cf8; }
+.badge-terminal { background: rgba(234,179,8,.15);  color: #fbbf24; }
+.badge-deposit  { background: rgba(168,85,247,.15); color: #c084fc; }
+.badge-other    { background: rgba(100,116,139,.15);color: #94a3b8; }
+
+/* ── Панель інструментів: дії (Новий продаж / Повернення) + фільтри
+   (період / спосіб оплати) в одному рядку ──────────────────────── */
+.sales-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.sales-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 18px;
+}
+/* глобальний select{width:100%} з admin.css інакше розтягує select на весь рядок і зносить решту на нові рядки */
+.sales-toolbar > select { width: auto; min-width: 170px; }
+.sales-toolbar > select:first-of-type { margin-left: auto; }
+.sales-search-input { min-width: 200px; margin-bottom: 16px; }
+
+/* ── Мобільна версія: 4 елементи панелі (Новий продаж / Повернення /
+   період / спосіб оплати) — суцільна сітка 2×2 однакових на вигляд
+   клітинок, без відступів між ними, замість окремих рядків/секцій ── */
+@media (max-width: 768px) {
+  .sales-toolbar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    margin-bottom: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+  }
+  .sales-toolbar > * {
+    border-radius: 0 !important;
+    border: none !important;
+    border-right: 1px solid var(--border) !important;
+    border-bottom: 1px solid var(--border) !important;
+    background: var(--bg-surface) !important;
+    color: var(--text-primary) !important;
+    font-weight: 500 !important;
+    padding: 12px 8px !important;
+    font-size: 13px !important;
+    min-height: 46px !important;
+    box-sizing: border-box;
+    text-align: center;
+    margin: 0 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  .sales-toolbar > *:nth-child(2n) { border-right: none !important; }
+  .sales-toolbar > *:nth-last-child(-n+2) { border-bottom: none !important; }
+  .sales-action-btn { justify-content: center; }
+  .sales-toolbar > select:first-of-type { margin-left: 0; }
+
+  .sales-search-input { width: 100%; }
+}
+
+/* ── Випадний список результатів пошуку (товар/клієнт у кошику) ── */
+.sales-search-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  z-index: 100;
+  max-height: 220px;
+  overflow-y: auto;
+  box-shadow: var(--shadow-md);
+  margin-top: 4px;
+}
+.sales-search-dropdown-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.sales-search-dropdown-item:last-child { border-bottom: none; }
+.sales-search-dropdown-item:hover { background: var(--bg-hover); }
+
+/* ── Список позицій у кошику / деталях чека ─────────────────── */
+.sales-cart-list {
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+.sales-cart-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.sales-cart-row:last-child { border-bottom: none; }
+.sales-cart-row-view { grid-template-columns: 1fr auto auto; }
+.sales-cart-row-name { font-size: 14px; font-weight: 500; }
+.sales-cart-row-sum { font-weight: 600; white-space: nowrap; }
+
+/* ── Мобільна картка рядка історії продажів (переозначає спільну картку
+   Table.jsx лише в межах .sales-history-table — інших сторінок і десктопу
+   не чіпає) ──────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .sales-history-table .table-wrap tbody tr {
+    padding: 12px 14px !important;
+    border-radius: 12px !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .18);
+    margin-bottom: 10px !important;
+    row-gap: 6px !important;
+  }
+  .sales-history-table .table-wrap tbody tr:active {
+    background: var(--bg-hover) !important;
+    transform: scale(.99);
+  }
+
+  /* № чека — заголовок картки */
+  .sales-history-table .table-wrap tbody td:first-child {
+    font-size: 15px !important;
+  }
+
+  /* Статус — приглушений дрібний підпис, без яскравого фону (акцент картки лишається на сумі) */
+  .sales-history-table .table-wrap tbody td.table-card-top-cell .badge {
+    background: none !important;
+    color: var(--text-muted) !important;
+    font-weight: 500 !important;
+    font-size: 10px !important;
+    letter-spacing: .2px !important;
+    padding: 2px 0 !important;
+  }
+
+  /* Сума — головний акцент картки: жирна, зелена */
+  .sales-history-table .table-wrap tbody td.table-mobile-trailing {
+    color: var(--success) !important;
+    font-weight: 700 !important;
+    font-size: 15px !important;
+  }
+
+  /* Дата + клієнт — другорядний рядок */
+  .sales-history-table .table-wrap tbody td.table-mobile-secondary {
+    font-size: 12px !important;
+  }
+}
+
+/* ── Повернення товару: результати пошуку чека ──────────────── */
+.sales-return-results { max-height: 260px; overflow-y: auto; }
+.sales-return-result-item {
+  padding: 10px 4px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+}
+.sales-return-result-item:hover { background: var(--bg-hover); }
+.sales-return-result-item:last-child { border-bottom: none; }

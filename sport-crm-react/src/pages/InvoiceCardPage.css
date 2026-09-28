@@ -1,0 +1,290 @@
+/* Картка абонементу (повна сторінка /invoices/:id) — спільні .card/.stats-grid/.stat-card/
+   .modal-tabs/.modal-tab-btn/.alert/.empty-state в admin.css. Структура заголовка дублює
+   ClientCardPage.css (картка клієнта) з префіксом icard- — сторінки в проєкті не мають
+   спільного компонента шапки, кожна тримає свою верстку. */
+
+.icard-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+.icard-breadcrumb a { color: var(--text-muted); text-decoration: none; }
+.icard-breadcrumb a:hover { color: var(--accent); }
+.icard-breadcrumb span { color: var(--text-primary); font-weight: 500; }
+
+.icard-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+.icard-header-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+.icard-avatar {
+  width: 64px; height: 64px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, #8b6cf9, #4f46e5);
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.icard-name-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.icard-name { font-size: 20px; font-weight: 600; }
+.icard-contact-row {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  margin-top: 8px;
+  font-size: 13px; color: var(--text-secondary);
+}
+.icard-contact-row span { display: inline-flex; align-items: center; gap: 5px; }
+.icard-client-link { color: var(--text-secondary); text-decoration: none; }
+.icard-client-link:hover { color: var(--accent); }
+
+.icard-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.icard-tabs { margin-bottom: 20px; }
+
+/* ── Кнопка "Дії" в шапці — власний випадний список (CardMenu заточений під мобільні картки таблиць) ── */
+.icard-actions-menu { position: relative; }
+.icard-actions-menu-list {
+  position: absolute; top: calc(100% + 6px); right: 0;
+  background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(0,0,0,.3); padding: 6px; min-width: 220px; z-index: 20;
+  display: flex; flex-direction: column;
+}
+.icard-actions-menu-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 9px 10px; border: none; background: none; border-radius: var(--radius-sm);
+  cursor: pointer; text-align: left; font-family: inherit; font-size: 13px; color: var(--text-primary);
+}
+.icard-actions-menu-item:hover { background: var(--bg-elevated); }
+.icard-actions-menu-item.danger { color: var(--danger); }
+
+@media (max-width: 900px) {
+  .icard-header { flex-direction: column; }
+  .icard-header-actions { width: 100%; }
+  .icard-header-actions .btn { flex: 1; justify-content: center; }
+  .icard-actions-menu { flex: 1; }
+  .icard-actions-menu-list { left: 0; right: 0; min-width: 0; }
+}
+
+/* ── Плашки статистики з іконкою (замість плоских .stat-card) ── */
+.icard-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.icard-stat {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+}
+.icard-stat-icon {
+  width: 40px; height: 40px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--icard-accent) 15%, transparent);
+  color: var(--icard-accent);
+}
+.icard-stat-label { font-size: 12px; color: var(--text-muted); }
+.icard-stat-value { font-size: 18px; font-weight: 700; margin-top: 2px; }
+.icard-stat-value.danger { color: var(--danger); }
+.icard-stat-value.success { color: var(--success); }
+.icard-stat-delta { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+.icard-stat-delta.down { color: var(--danger); }
+.icard-stat-split { display: flex; gap: 22px; flex: 1; min-width: 0; }
+.icard-stat-col { min-width: 0; }
+
+@media (max-width: 1100px) { .icard-stats-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) {
+  .icard-stats-grid { grid-template-columns: 1fr; }
+  .icard-stat-split { gap: 16px; }
+}
+
+/* ── Двоколонковий макет вкладки "Огляд" ── */
+.icard-main-grid {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 20px;
+  align-items: start;
+}
+.icard-main-col { min-width: 0; display: flex; flex-direction: column; gap: 20px; }
+.icard-side-col { min-width: 0; display: flex; flex-direction: column; gap: 20px; }
+@media (max-width: 900px) { .icard-main-grid { grid-template-columns: 1fr; } }
+
+.icard-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+
+/* ── Деталі абонемента — один стовпець рядків ── */
+.icard-detail-list { display: flex; flex-direction: column; }
+.icard-detail-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--border);
+}
+.icard-detail-list .icard-detail-item:last-child { border-bottom: none; }
+.icard-detail-item-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.icard-detail-item-icon { color: var(--accent); flex-shrink: 0; }
+.icard-detail-item-value { font-size: 14px; font-weight: 500; color: var(--text-primary); text-align: right; word-break: break-word; }
+.icard-detail-price { color: var(--accent); font-weight: 600; }
+.icard-detail-debt { color: var(--danger); }
+.icard-detail-notes { margin-top: 4px; align-items: flex-start; }
+
+.icard-info-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+}
+.icard-info-box-icon {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.icard-info-box-title { font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 2px; }
+.icard-info-box-text { font-size: 12px; color: var(--text-secondary); }
+.icard-info-box-muted   .icard-info-box-icon { background: var(--accent-dim); color: var(--accent); }
+.icard-info-box-warning .icard-info-box-icon { background: rgba(251,191,36,.12); color: var(--warning); }
+.icard-info-box-danger  .icard-info-box-icon { background: rgba(248,113,113,.12); color: var(--danger); }
+
+/* ── Прогрес абонемента (лічильник занять) ── */
+.icard-progress-track {
+  height: 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.icard-progress-fill { height: 100%; background: var(--accent); border-radius: 4px; transition: width .3s; }
+.icard-progress-summary {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+.icard-progress-summary .dot {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--success); flex-shrink: 0;
+}
+.icard-progress-dots { display: flex; gap: 8px; flex-wrap: wrap; }
+.icard-progress-dot {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 600;
+  background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-muted);
+}
+.icard-progress-dot.done { background: var(--accent); border-color: var(--accent); color: #fff; }
+.icard-progress-dot.next { border-color: var(--accent); color: var(--accent); }
+
+/* ── Інформація (метадані) ── */
+.icard-info-list { display: flex; flex-direction: column; }
+.icard-info-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 11px 0; border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.icard-info-item:last-child { border-bottom: none; }
+.icard-info-label { color: var(--text-secondary); display: flex; align-items: center; gap: 8px; }
+.icard-info-value { font-weight: 500; color: var(--text-primary); text-align: right; }
+.icard-info-value a { color: var(--accent); text-decoration: none; }
+.icard-info-value a:hover { text-decoration: underline; }
+
+/* ── Швидкі дії (бічна панель) ── */
+.icard-qa-list { display: flex; flex-direction: column; gap: 2px; }
+.icard-qa-item {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 10px; border: none; border-radius: var(--radius-sm);
+  background: none; cursor: pointer; text-align: left; color: inherit; font-family: inherit;
+  transition: background .15s;
+}
+.icard-qa-item:hover { background: var(--bg-elevated); }
+.icard-qa-item.highlight { background: var(--accent-dim); }
+.icard-qa-item.highlight:hover { background: var(--accent-dim); }
+.icard-qa-icon {
+  width: 32px; height: 32px; flex-shrink: 0; border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg-elevated); color: var(--text-secondary);
+}
+.icard-qa-item.highlight .icard-qa-icon { background: var(--accent); color: #fff; }
+.icard-qa-body { flex: 1; min-width: 0; }
+.icard-qa-title { font-size: 13px; font-weight: 500; }
+.icard-qa-item.highlight .icard-qa-title { color: var(--accent); }
+.icard-qa-desc { font-size: 11px; color: var(--text-muted); }
+.icard-qa-arrow { flex-shrink: 0; color: var(--text-muted); }
+
+.card-pos-box {
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  margin-bottom: 10px;
+}
+.card-pos-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.card-pos-sum {
+  margin-left: auto;
+  font-size: 15px;
+  color: var(--text-primary);
+}
+.card-pos-box .btn { margin-top: 10px; }
+.card-pos-success { border-color: var(--success); }
+.card-pos-success .card-pos-row {
+  color: var(--success);
+  font-weight: 600;
+}
+.card-pos-success .card-pos-sum { color: var(--success); }
+.card-pos-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+
+.sale-summary {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  margin: 16px 0;
+}
+.sale-summary-row { display: flex; justify-content: space-between; font-size: 14px; padding: 4px 0; }
+.sale-summary-row.total {
+  font-weight: 600; font-size: 16px;
+  padding-top: 10px; margin-top: 6px;
+  border-top: 1px solid var(--border);
+}
