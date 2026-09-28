@@ -152,7 +152,8 @@ export default function GroupSessionsPage() {
     if (!addClient.clientId) return;
     const res = await addGroupSessionClient(detailId, addClient.clientId);
     if (!res.success) { toast(res.error, 'error'); return; }
-    toast(res.message, 'success');
+    // warning — у клієнта немає абонемента на групові (персональний їх не покриває)
+    toast(res.message, res.warning ? 'warning' : 'success', res.warning ? 7000 : 3000);
     setAddClient(null);
     reload();
     reloadDetail();
@@ -168,6 +169,7 @@ export default function GroupSessionsPage() {
   async function handleAttendance(rosterId, status) {
     const res = await markGroupSessionAttendance(rosterId, status);
     if (!res.success) { toast(res.error, 'error'); return; }
+    if (res.warning) toast(res.message, 'warning', 7000);
     reloadDetail();
   }
 

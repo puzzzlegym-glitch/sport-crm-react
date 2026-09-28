@@ -10,7 +10,7 @@
  *   Attendance::recordVisit($pdo, $clubId, $clientId, $invoiceId, $trainerId, $trainerName, 'manual', $sess);
  *   Attendance::createTrainerEarning($pdo, $clubId, $visitId, $invoiceId, $trainerId);
  *   Attendance::createGroupSessionEarning($pdo, $clubId, $sessionId);
- *   Attendance::findActiveInvoice($pdo, $clubId, $clientId);
+ *   Attendance::findActiveInvoice($pdo, $clubId, $clientId, 'group');
  */
 
 class Attendance
@@ -202,20 +202,66 @@ class Attendance
     }
 
     /**
-     * Шукає активний абонемент клієнта (діє на сьогодні). Той самий запит,
-     * що раніше дублювався в 'scan' і 'check_in' visits_api.php.
+     * Які абонементи (tariffs.coverage) можуть покрити відвідування певного виду —
+     * у порядку пріоритету. Абонемент без тарифу (перенесений зі старої CRM) = 'all'.
+     *   gym      — прохід у зал сканером / ручна відмітка без тренера:
+     *              спершу зал/універсальний; персональний лише як запасний варіант
+     *              (клієнт лише з персональним приходить саме на персональне)
+     *   group    — групове заняття: групові/універсальний; персональний — НІКОЛИ
+     *   personal — відмітка з тренером: персональний, потім універсальний/зал
      */
-    public static function findActiveInvoice(PDO $pdo, int $clubId, int $clientId): ?array
+    public const SERVICE_COVERAGE = [
+        'gym'      => [['gym', 'all'], ['personal']],
+        'group'    => [['group', 'all']],
+        'personal' => [['personal'], ['all', 'gym']],
+    ];
+
+    public const SERVICE_LABELS = [
+        'gym' => 'зал', 'group' => 'групові заняття', 'personal' => 'персональні тренування',
+    ];
+
+    /**
+     * Активний абонемент клієнта (діє сьогодні), що покриває вид послуги $service.
+     * Серед придатних — спершу вищий пріоритет покриття, потім той, що закінчується
+     * раніше (щоб заняття не згоріли). Повертає також coverage і is_fallback
+     * (true — узято запасний варіант, напр. персональний при проході сканером).
+     */
+    public static function findActiveInvoice(PDO $pdo, int $clubId, int $clientId, string $service = 'gym'): ?array
     {
+        $tiers = self::SERVICE_COVERAGE[$service] ?? self::SERVICE_COVERAGE['gym'];
         $stmt = $pdo->prepare("
-            SELECT ci.id, ci.tariff_name, ci.trainer_id, ci.trainer_name,
-                   ci.visits_total, ci.visits_used
+            SELECT ci.id, ci.tariff_name, ci.end_date, ci.trainer_id, ci.trainer_name,
+                   ci.visits_total, ci.visits_used,
+                   DATEDIFF(ci.end_date, CURDATE()) AS days_left,
+                   COALESCE(t.coverage, 'all') AS coverage
             FROM client_invoices ci
+            LEFT JOIN tariffs t ON t.id = ci.tariff_id
             WHERE ci.client_id = ? AND ci.club_id = ? AND ci.status = 'active'
               AND ci.start_date <= CURDATE() AND ci.end_date >= CURDATE()
-            ORDER BY ci.end_date ASC LIMIT 1
+            ORDER BY ci.end_date ASC, ci.id ASC
         ");
         $stmt->execute([$clientId, $clubId]);
-        return $stmt->fetch() ?: null;
+        $rows = $stmt->fetchAll();
+        foreach ($tiers as $i => $allowed) {
+            foreach ($rows as $r) {
+                if (in_array($r['coverage'], $allowed, true)) {
+                    $r['is_fallback'] = $i > 0;
+                    return $r;
+                }
+            }
+        }
+        return null;
+    }
+
+    /** Чи є в клієнта активний абонемент, що НЕ покриває цю послугу (для підказки адміну). */
+    public static function hasOtherActiveInvoice(PDO $pdo, int $clubId, int $clientId): bool
+    {
+        $st = $pdo->prepare("
+            SELECT 1 FROM client_invoices
+            WHERE client_id = ? AND club_id = ? AND status = 'active'
+              AND start_date <= CURDATE() AND end_date >= CURDATE() LIMIT 1
+        ");
+        $st->execute([$clientId, $clubId]);
+        return (bool)$st->fetchColumn();
     }
 }

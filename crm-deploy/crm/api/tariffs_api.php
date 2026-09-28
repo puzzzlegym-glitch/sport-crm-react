@@ -42,6 +42,7 @@ try { switch ($action) {
                 t.color, t.is_active, t.sort_order,
                 t.freeze_days_max, t.freeze_days_min, t.prolong_sum,
                 t.has_trainer, t.earn_release_trigger,
+                COALESCE(t.coverage, 'all') AS coverage,
                 t.created_at,
                 COUNT(ci.id)          AS usage_total,
                 SUM(ci.status='active') AS usage_active
@@ -96,6 +97,10 @@ try { switch ($action) {
         $earnTrigger = in_array($input['earn_release_trigger'] ?? '', ['on_sale','on_each_visit','on_visits_done','on_end_date'])
             ? $input['earn_release_trigger'] : 'on_each_visit';
 
+        // Що покриває абонемент: all=зал+групові, gym, group, personal (див. Attendance::SERVICE_COVERAGE)
+        $coverage = in_array($input['coverage'] ?? '', ['all','gym','group','personal'], true)
+            ? $input['coverage'] : (!empty($input['has_trainer']) ? 'personal' : 'all');
+
         $freezeMax = max(0, (int)($input['freeze_days_max'] ?? 0));
         $freezeMin = max(0, (int)($input['freeze_days_min'] ?? 0));
         if ($freezeMax > 0 && $freezeMin > $freezeMax) {
@@ -107,8 +112,8 @@ try { switch ($action) {
                 (club_id, name, category, duration_days, visits_limit,
                  price, description, color, sort_order,
                  freeze_days_max, freeze_days_min, prolong_sum,
-                 has_trainer, earn_release_trigger)
-            VALUES (?,?,?,?,?, ?,?,?,?, ?,?,?, ?,?)
+                 has_trainer, earn_release_trigger, coverage)
+            VALUES (?,?,?,?,?, ?,?,?,?, ?,?,?, ?,?,?)
         ")->execute([
             $clubId,
             $name,
@@ -126,6 +131,7 @@ try { switch ($action) {
             max(0, (float)($input['prolong_sum']   ?? 0)),
             (int)(bool)($input['has_trainer'] ?? 0),
             $earnTrigger,
+            $coverage,
         ]);
 
         Response::ok(['id' => (int)$pdo->lastInsertId()], 'Тариф створено');
@@ -147,6 +153,10 @@ try { switch ($action) {
         $earnTrigger = in_array($input['earn_release_trigger'] ?? '', ['on_sale','on_each_visit','on_visits_done','on_end_date'])
             ? $input['earn_release_trigger'] : 'on_each_visit';
 
+        // Що покриває абонемент: all=зал+групові, gym, group, personal (див. Attendance::SERVICE_COVERAGE)
+        $coverage = in_array($input['coverage'] ?? '', ['all','gym','group','personal'], true)
+            ? $input['coverage'] : (!empty($input['has_trainer']) ? 'personal' : 'all');
+
         $freezeMax = max(0, (int)($input['freeze_days_max'] ?? 0));
         $freezeMin = max(0, (int)($input['freeze_days_min'] ?? 0));
         if ($freezeMax > 0 && $freezeMin > $freezeMax) {
@@ -167,7 +177,8 @@ try { switch ($action) {
                 freeze_days_min  = ?,
                 prolong_sum      = ?,
                 has_trainer      = ?,
-                earn_release_trigger = ?
+                earn_release_trigger = ?,
+                coverage         = ?
             WHERE id = ? AND club_id = ?
         ")->execute([
             $name,
@@ -185,6 +196,7 @@ try { switch ($action) {
             max(0, (float)($input['prolong_sum']   ?? 0)),
             (int)(bool)($input['has_trainer'] ?? 0),
             $earnTrigger,
+            $coverage,
             $id, $clubId,
         ]);
 

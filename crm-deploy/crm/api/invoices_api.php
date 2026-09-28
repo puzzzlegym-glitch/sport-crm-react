@@ -90,7 +90,8 @@ try { switch ($action) {
                    price, description, color,
                    COALESCE(freeze_days_max, 0)   AS freeze_days_max,
                    COALESCE(prolong_sum, 0)        AS prolong_sum,
-                   COALESCE(has_trainer, 0)        AS has_trainer
+                   COALESCE(has_trainer, 0)        AS has_trainer,
+                   COALESCE(coverage, 'all')       AS coverage
             FROM tariffs
             WHERE club_id = ? AND is_active = 1
             ORDER BY sort_order, name

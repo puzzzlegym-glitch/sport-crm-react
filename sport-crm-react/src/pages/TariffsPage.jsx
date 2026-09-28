@@ -15,6 +15,22 @@ const EMPTY_FORM = {
   name: '', price: '', duration_days: 30, visits_limit: '',
   category: '', color: '#4f9cf9', freeze_days_max: 0, freeze_days_min: 0, prolong_sum: 0,
   has_trainer: false, earn_release_trigger: 'on_each_visit', sort_order: 0, description: '',
+  coverage: 'all',
+};
+
+// Що покриває абонемент тарифу — визначає, з якого абонемента списується відвідування
+// (сервер: Attendance::SERVICE_COVERAGE).
+const COVERAGE_OPTIONS = [
+  { value: 'all', label: '⭐ Універсальний (зал + групові)', short: '⭐ Зал + групові' },
+  { value: 'gym', label: '🏋️ Лише зал', short: '🏋️ Зал' },
+  { value: 'group', label: '👥 Лише групові заняття', short: '👥 Групові' },
+  { value: 'personal', label: '🧑‍🏫 Персональні тренування', short: '🧑‍🏫 Персональні' },
+];
+const COVERAGE_HINT = {
+  all: 'Прохід сканером у зал і групові заняття.',
+  gym: 'Лише прохід у зал. На групові заняття не списується.',
+  group: 'Лише групові заняття. Прохід у зал сканером ним не оплачено.',
+  personal: 'Заняття з тренером. Групові заняття з нього НЕ списуються; сканер спише його лише якщо іншого абонемента на зал немає.',
 };
 
 export default function TariffsPage() {
@@ -67,6 +83,7 @@ export default function TariffsPage() {
       earn_release_trigger: t.earn_release_trigger || 'on_each_visit',
       sort_order: t.sort_order || 0,
       description: t.description || '',
+      coverage: t.coverage || (t.has_trainer ? 'personal' : 'all'),
     });
     setError('');
   }
@@ -99,6 +116,7 @@ export default function TariffsPage() {
       earn_release_trigger: form.earn_release_trigger,
       sort_order: parseInt(form.sort_order) || 0,
       description: form.description.trim(),
+      coverage: form.coverage,
     };
     const res = form.id ? await updateTariff(payload) : await createTariff(payload);
     setSubmitting(false);
@@ -131,6 +149,7 @@ export default function TariffsPage() {
         <>
           <span className="tariff-name">{t.name}</span>
           {t.category && <Badge variant="info">{t.category}</Badge>}
+          <Badge variant="inactive">{(COVERAGE_OPTIONS.find((o) => o.value === (t.coverage || 'all')) || COVERAGE_OPTIONS[0]).short}</Badge>
           {!t.is_active && <Badge variant="inactive">Архів</Badge>}
         </>
       ),
@@ -212,6 +231,20 @@ export default function TariffsPage() {
             <FormGroup label="Назва *" fullWidth>
               <input type="text" placeholder="Наприклад: Безліміт 30 днів" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             </FormGroup>
+            <FormGroup label="Що покриває *" fullWidth>
+              <select
+                value={form.coverage}
+                onChange={(e) => {
+                  const coverage = e.target.value;
+                  // Персональний тариф завжди «з тренером»; при виході з «Персональні» галочку знімаємо
+                  const hasTrainer = coverage === 'personal' ? true : (form.coverage === 'personal' ? false : form.has_trainer);
+                  setForm({ ...form, coverage, has_trainer: hasTrainer });
+                }}
+              >
+                {COVERAGE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>{COVERAGE_HINT[form.coverage]}</div>
+            </FormGroup>
             <FormGroup label="Ціна (грн) *">
               <input type="number" min="0" step="1" placeholder="0" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
             </FormGroup>
@@ -238,7 +271,7 @@ export default function TariffsPage() {
             </FormGroup>
             <FormGroup label="Тренер">
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 0' }}>
-                <input type="checkbox" checked={form.has_trainer} onChange={(e) => setForm({ ...form, has_trainer: e.target.checked })} />
+                <input type="checkbox" checked={form.has_trainer} disabled={form.coverage === 'personal'} onChange={(e) => setForm({ ...form, has_trainer: e.target.checked })} />
                 Цей тариф передбачає тренера
               </label>
             </FormGroup>

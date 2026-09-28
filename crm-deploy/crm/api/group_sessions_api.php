@@ -51,6 +51,13 @@ function loadSession(PDO $pdo, int $clubId, int $sessionId): ?array {
     return $s->fetch() ?: null;
 }
 
+/** Пояснення, чому групове заняття не списано з абонемента (null-invoice). */
+function groupNoInvoiceWarning(PDO $pdo, int $clubId, int $clientId): string {
+    return Attendance::hasOtherActiveInvoice($pdo, $clubId, $clientId)
+        ? 'Немає абонемента на групові заняття (персональний чи «лише зал» їх не покриває) — заняття не списано з абонемента.'
+        : 'Немає активного абонемента на групові заняття — заняття не списано з абонемента.';
+}
+
 try { switch ($action) {
 
 // ════ СПИСОК ЗАНЯТЬ ══════════════════════════════════════════════
@@ -234,7 +241,8 @@ case 'add_client':
         }
     }
 
-    $invoice   = Attendance::findActiveInvoice($pdo, $clubId, $clientId);
+    // Групове заняття покривають лише «Групові» / «Універсальний» — персональний НІКОЛИ.
+    $invoice   = Attendance::findActiveInvoice($pdo, $clubId, $clientId, 'group');
     $invoiceId = $invoice['id'] ?? null;
 
     try {
@@ -247,7 +255,12 @@ case 'add_client':
         throw $e;
     }
 
-    Response::ok(['id' => (int)$pdo->lastInsertId(), 'invoice_id' => $invoiceId], 'Клієнта додано до заняття');
+    $rosterId = (int)$pdo->lastInsertId(); // до наступного запиту — SELECT скидає lastInsertId
+    $warning  = $invoiceId ? null : groupNoInvoiceWarning($pdo, $clubId, $clientId);
+    Response::ok(
+        ['id' => $rosterId, 'invoice_id' => $invoiceId, 'warning' => $warning],
+        $warning ? "Клієнта додано. ⚠ $warning" : 'Клієнта додано до заняття'
+    );
 
 
 // ════ ПРИБРАТИ КЛІЄНТА З РОСТЕРУ ═════════════════════════════════
@@ -299,6 +312,15 @@ case 'mark_attendance':
         $trStmt->execute([$roster['trainer_id']]);
         $trainerName = $trStmt->fetchColumn() ?: null;
 
+        // Абонемент шукаємо заново на момент заняття: записаний при бронюванні міг
+        // закінчитись/замерзнути, а клієнт міг докупити новий.
+        $invoice = Attendance::findActiveInvoice($pdo, $clubId, (int)$roster['client_id'], 'group');
+        if ($invoice && $invoice['visits_total'] && $invoice['visits_used'] >= $invoice['visits_total']) {
+            $invoice = null;
+        }
+        $roster['invoice_id'] = $invoice['id'] ?? null;
+        $warning = $invoice ? null : groupNoInvoiceWarning($pdo, $clubId, (int)$roster['client_id']);
+
         // method='manual' — той самий, перевірений тег, що й для ручної
         // відмітки в visits_api.php; провенанс "це було групове заняття"
         // і так однозначно видно через group_session_clients.visit_id
@@ -311,11 +333,14 @@ case 'mark_attendance':
 
         $pdo->prepare("
             UPDATE group_session_clients
-            SET status='attended', visit_id=?, checked_in_at=NOW()
+            SET status='attended', visit_id=?, invoice_id=?, checked_in_at=NOW()
             WHERE id=?
-        ")->execute([$visitId, $rosterId]);
+        ")->execute([$visitId, $roster['invoice_id'], $rosterId]);
 
-        Response::ok(['visit_id' => $visitId], 'Присутність відмічено');
+        Response::ok(
+            ['visit_id' => $visitId, 'invoice_id' => $roster['invoice_id'], 'warning' => $warning],
+            $warning ? "Присутність відмічено. ⚠ $warning" : 'Присутність відмічено'
+        );
     } else {
         $pdo->prepare("UPDATE group_session_clients SET status='no_show' WHERE id=?")->execute([$rosterId]);
         Response::ok([], 'Позначено як "не прийшов"');

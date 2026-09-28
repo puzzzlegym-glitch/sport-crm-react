@@ -997,6 +997,7 @@ CREATE TABLE `tariffs` (
   `club_id` int UNSIGNED NOT NULL,
   `name` varchar(120) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Назва: "Безліміт", "10 відвідувань"',
   `category` varchar(60) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Групова, персональна, онлайн...',
+  `coverage` enum('all','gym','group','personal') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'all' COMMENT 'Що покриває: all=зал+групові, gym, group, personal',
   `duration_days` smallint NOT NULL DEFAULT '30' COMMENT 'Термін дії в днях',
   `visits_limit` smallint DEFAULT NULL COMMENT 'NULL = безліміт',
   `price` decimal(10,2) NOT NULL DEFAULT '0.00',

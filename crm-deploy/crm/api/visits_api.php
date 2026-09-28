@@ -82,24 +82,9 @@ try { switch ($action) {
             Response::error("Клієнт заблокований.", 403);
         }
 
-        // Знаходимо активний абонемент
-        $invoice = null;
-        $invStmt = $pdo->prepare("
-            SELECT ci.id, ci.tariff_name, ci.end_date,
-                   ci.visits_total, ci.visits_used,
-                   ci.trainer_id, ci.trainer_name,
-                   DATEDIFF(ci.end_date, CURDATE()) AS days_left
-            FROM client_invoices ci
-            WHERE ci.client_id = ?
-              AND ci.club_id   = ?
-              AND ci.status    = 'active'
-              AND ci.start_date <= CURDATE()
-              AND ci.end_date >= CURDATE()
-            ORDER BY ci.end_date ASC
-            LIMIT 1
-        ");
-        $invStmt->execute([$client['id'], $clubId]);
-        $invoice = $invStmt->fetch();
+        // Знаходимо активний абонемент на зал: спершу «Зал»/«Універсальний»,
+        // персональний — лише якщо іншого немає (з попередженням нижче).
+        $invoice = Attendance::findActiveInvoice($pdo, $clubId, (int)$client['id'], 'gym');
 
         // Попередження або блокування залежно від стану абонементу
         $warning = null;
@@ -116,6 +101,12 @@ try { switch ($action) {
             $warning = (int)$invoice['days_left'] === 0
                 ? 'Абонемент закінчується сьогодні'
                 : "Абонемент закінчується через {$invoice['days_left']} дн.";
+        }
+        if ($invoice && !empty($invoice['is_fallback'])) {
+            $fb = 'Списано персональне заняття «' . $invoice['tariff_name'] . '»'
+                . ($invoice['trainer_name'] ? " (тренер {$invoice['trainer_name']})" : '')
+                . ' — іншого абонемента на зал немає';
+            $warning = $warning ? "$fb. $warning" : $fb;
         }
 
         // Захист від подвійного сканування (5 хвилин)
@@ -175,16 +166,11 @@ try { switch ($action) {
         if (!$client) Response::error('Клієнта не знайдено', 404);
         if ($client['status'] === 'blocked') Response::error('Клієнт заблокований', 403);
 
-        // Якщо invoice не передано — беремо активний
+        // Якщо invoice не передано — беремо активний: з тренером — спершу персональний,
+        // без тренера — спершу «Зал»/«Універсальний» (як сканер).
+        $overrideTrainerId = (int)($input['trainer_id'] ?? 0) ?: null;
         if (!$invoiceId) {
-            $invStmt = $pdo->prepare("
-                SELECT id, trainer_id, trainer_name, visits_total, visits_used FROM client_invoices
-                WHERE client_id=? AND club_id=? AND status='active'
-                  AND start_date<=CURDATE() AND end_date>=CURDATE()
-                ORDER BY end_date ASC LIMIT 1
-            ");
-            $invStmt->execute([$clientId, $clubId]);
-            $inv = $invStmt->fetch();
+            $inv = Attendance::findActiveInvoice($pdo, $clubId, $clientId, $overrideTrainerId ? 'personal' : 'gym');
             $invoiceId   = $inv['id']           ?? null;
             $trainerId   = $inv['trainer_id']   ?? null;
             $trainerName = $inv['trainer_name'] ?? null;
@@ -205,7 +191,6 @@ try { switch ($action) {
         // Тренер на конкретне відвідування можна змінити відносно
         // "рекомендованого" тренера абонемента (client_invoices.trainer_id) —
         // напр. клієнта тренував інший тренер цього разу.
-        $overrideTrainerId = (int)($input['trainer_id'] ?? 0) ?: null;
         if ($overrideTrainerId) {
             $ovStmt = $pdo->prepare("
                 SELECT u.full_name FROM club_trainers ct
@@ -254,7 +239,11 @@ try { switch ($action) {
 
         Attendance::createTrainerEarning($pdo, $clubId, $visitId, $invoiceId, $trainerId);
 
-        Response::ok(['visit_id' => $visitId], 'Відвідування відмічено');
+        $msg = 'Відвідування відмічено';
+        if ($invoiceId && !empty($inv['is_fallback']) && !empty($inv['tariff_name'])) {
+            $msg .= ". Списано з «{$inv['tariff_name']}»";
+        }
+        Response::ok(['visit_id' => $visitId], $msg);
 
 
     // ════ РЕКОМЕНДОВАНИЙ ТРЕНЕР КЛІЄНТА (для форми ручної відмітки) ═
@@ -262,15 +251,9 @@ try { switch ($action) {
         $clientId = (int)($input['client_id'] ?? $_GET['client_id'] ?? 0);
         if (!$clientId) Response::error('Вкажіть client_id');
 
-        $stmt = $pdo->prepare("
-            SELECT ci.id, ci.tariff_name, ci.trainer_id, ci.trainer_name
-            FROM client_invoices ci
-            WHERE ci.client_id=? AND ci.club_id=? AND ci.status='active'
-              AND ci.start_date<=CURDATE() AND ci.end_date>=CURDATE()
-            ORDER BY ci.end_date ASC LIMIT 1
-        ");
-        $stmt->execute([$clientId, $clubId]);
-        Response::ok(['invoice' => $stmt->fetch() ?: null]);
+        // Для форми ручної відмітки: спершу персональний (щоб підставити його тренера),
+        // інакше — будь-який абонемент на зал.
+        Response::ok(['invoice' => Attendance::findActiveInvoice($pdo, $clubId, $clientId, 'personal')]);
 
 
     // ════ СПИСОК ТРЕНЕРІВ ДЛЯ ВИБОРУ ПРИ ВІДМІТЦІ ═══════════════
@@ -621,6 +604,11 @@ function self_noInvoiceMessage(PDO $pdo, int $clubId, int $clientId): array {
     $futureStart = $futureStmt->fetchColumn();
     if ($futureStart) {
         return ['message' => 'Абонемент ще не розпочався (діє з ' . date('d.m.Y', strtotime($futureStart)) . '). Відвідування заборонено.', 'reason' => 'future', 'invoice_id' => null];
+    }
+
+    // Є діючий абонемент, але він не покриває зал (напр. лише «Групові заняття»)
+    if (Attendance::hasOtherActiveInvoice($pdo, $clubId, $clientId)) {
+        return ['message' => 'Діючий абонемент клієнта покриває лише групові заняття — прохід у зал ним не оплачено. Продайте абонемент на зал або відмітьте клієнта в груповому занятті.', 'reason' => 'coverage', 'invoice_id' => null];
     }
 
     return ['message' => 'Немає активного абонементу. Відвідування заборонено.', 'reason' => 'none', 'invoice_id' => null];
