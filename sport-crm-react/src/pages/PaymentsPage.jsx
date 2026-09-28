@@ -7,7 +7,7 @@ import FormGroup from '../components/ui/FormGroup';
 import { usePermissions } from '../hooks/usePermissions';
 import { useShiftLock } from '../hooks/useShiftLock';
 import { useToast } from '../components/ui/ToastProvider';
-import { getPayments, getPaymentTariffs, updatePayment, deletePayment } from '../api/payments';
+import { getPayments, getPaymentTariffs, updatePayment, deletePayment, refundPayment } from '../api/payments';
 import { formatMoney, formatDate, formatTime, localMonthStart, localToday } from '../utils/format';
 import './PaymentsPage.css';
 
@@ -15,7 +15,7 @@ const PAY_METHODS = {
   cash: 'Готівка', card: 'Карта', terminal: 'Термінал',
   deposit: 'Депозит', transfer: 'Переказ', free: 'Безкоштовно', other: 'Інше',
 };
-const FISCAL_STATUS_LABELS = { pending: '⏳ В черзі', sent: '✅ Відправлено', failed: '❌ Помилка', skipped_manual: '— Пропущено вручну' };
+const FISCAL_STATUS_LABELS = { pending: '⏳ В черзі', sent: '✅ Відправлено', failed: '❌ Помилка', skipped_manual: '— Пропущено вручну', return_manual: '⚠ Потрібен чек повернення (Checkbox)' };
 const METHOD_OPTIONS = ['cash', 'card', 'terminal', 'deposit', 'transfer', 'free'];
 const EDIT_METHOD_OPTIONS = [...METHOD_OPTIONS, 'other'];
 
@@ -40,6 +40,8 @@ export default function PaymentsPage() {
 
   const [edit, setEdit] = useState(null); // { id, amount, payment_method, notes }
   const [editError, setEditError] = useState('');
+  // Повернення (сторно): для оплат закритих змін — замість редагування/видалення
+  const [refund, setRefund] = useState(null); // { id, max, amount, reason, clientName, error, submitting }
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -109,6 +111,21 @@ export default function PaymentsPage() {
     reload();
   }
 
+  function openRefund(p) {
+    const max = Math.round((parseFloat(p.amount) - parseFloat(p.refunded_amount || 0)) * 100) / 100;
+    setRefund({ id: p.id, max, amount: String(max), reason: '', clientName: p.client_name, method: p.payment_method, error: '', submitting: false });
+  }
+
+  async function submitRefund() {
+    if (refund.reason.trim().length < 3) { setRefund({ ...refund, error: 'Вкажіть причину повернення' }); return; }
+    setRefund({ ...refund, submitting: true, error: '' });
+    const res = await refundPayment({ id: refund.id, amount: parseFloat(refund.amount), reason: refund.reason.trim() });
+    if (!res.success) { setRefund({ ...refund, submitting: false, error: res.error }); return; }
+    toast(res.message, res.needs_fiscal_return ? 'warning' : 'success', res.needs_fiscal_return ? 8000 : 3000);
+    setRefund(null);
+    reload();
+  }
+
   const summaryTotal = data.summary.reduce((a, s) => a + parseFloat(s.total || 0), 0);
 
   const columns = [
@@ -160,7 +177,16 @@ export default function PaymentsPage() {
       key: 'amount',
       label: 'Сума',
       mobile: 'trailing',
-      render: (p) => <span style={{ fontWeight: 600, color: 'var(--success)', whiteSpace: 'nowrap' }}>{formatMoney(p.amount)}</span>,
+      render: (p) => (parseFloat(p.amount) < 0 ? (
+        <span style={{ fontWeight: 600, color: 'var(--danger)', whiteSpace: 'nowrap' }} title={p.refund_reason || ''}>
+          ↩ {formatMoney(p.amount)}<br /><span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-muted)' }}>Повернення</span>
+        </span>
+      ) : (
+        <span style={{ fontWeight: 600, color: 'var(--success)', whiteSpace: 'nowrap' }}>
+          {formatMoney(p.amount)}
+          {parseFloat(p.refunded_amount) > 0 && <><br /><span style={{ fontSize: 11, fontWeight: 400, color: 'var(--danger)' }}>повернено {formatMoney(p.refunded_amount)}</span></>}
+        </span>
+      )),
     },
     {
       key: 'date',
@@ -177,11 +203,15 @@ export default function PaymentsPage() {
       label: '',
       render: (p) => (
         <div style={{ display: 'flex', gap: 4, whiteSpace: 'nowrap' }} onClick={(e) => e.stopPropagation()}>
-          {has('payments.edit') && (
+          {/* Оплата закритої зміни (або з поверненнями) незмінна — лише повернення */}
+          {!Number(p.is_locked) && !(parseFloat(p.refunded_amount) > 0) && parseFloat(p.amount) > 0 && has('payments.edit') && (
             <button className="btn btn-ghost btn-sm" {...lockedProps} onClick={guard(() => openEdit(p))}>✎</button>
           )}
-          {has('payments.delete') && (
+          {!Number(p.is_locked) && !(parseFloat(p.refunded_amount) > 0) && has('payments.delete') && (
             <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} {...lockedProps} onClick={guard(() => handleDelete(p.id))}>🗑</button>
+          )}
+          {parseFloat(p.amount) > 0 && parseFloat(p.amount) - parseFloat(p.refunded_amount || 0) > 0.009 && has('payments.delete') && (
+            <button className="btn btn-ghost btn-sm" title="Повернення (сторно) — проводиться в поточній зміні" onClick={() => openRefund(p)}>↩</button>
           )}
         </div>
       ),
@@ -277,6 +307,36 @@ export default function PaymentsPage() {
                 value={edit.notes}
                 onChange={(e) => setEdit({ ...edit, notes: e.target.value })}
               />
+            </FormGroup>
+          </>
+        )}
+      </Modal>
+
+      <Modal
+        open={!!refund}
+        onClose={() => setRefund(null)}
+        title="↩ Повернення оплати"
+        footer={
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <button className="btn btn-ghost" onClick={() => setRefund(null)}>Скасувати</button>
+            <button className="btn btn-danger" disabled={refund?.submitting} onClick={submitRefund}>{refund?.submitting ? '...' : 'Провести повернення'}</button>
+          </div>
+        }
+      >
+        {refund && (
+          <>
+            {refund.error && <div className="alert alert-error">{refund.error}</div>}
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
+              Клієнт: <strong>{refund.clientName}</strong>, спосіб: <strong>{PAY_METHODS[refund.method] || refund.method}</strong>.
+              Повернення проводиться в <strong>поточній</strong> зміні — закрита зміна не змінюється.
+              {refund.method === 'cash' && ' Готівку видають з каси (потрібна відкрита зміна).'}
+              {refund.method === 'deposit' && ' Сума повернеться на депозит клієнта.'}
+            </p>
+            <FormGroup label={`Сума, грн (не більше ${formatMoney(refund.max)})`}>
+              <input type="number" min="0.01" step="0.01" max={refund.max} value={refund.amount} onChange={(e) => setRefund({ ...refund, amount: e.target.value })} />
+            </FormGroup>
+            <FormGroup label="Причина *">
+              <input type="text" placeholder="Помилкова оплата / клієнт відмовився..." value={refund.reason} onChange={(e) => setRefund({ ...refund, reason: e.target.value })} />
             </FormGroup>
           </>
         )}

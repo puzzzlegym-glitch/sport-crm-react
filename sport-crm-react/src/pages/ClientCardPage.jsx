@@ -687,15 +687,20 @@ export default function ClientCardPage() {
               { key: 'tariff', label: 'Абонемент', render: (p) => <span style={{ fontSize: 13 }}>{p.tariff_name || '—'}</span> },
               { key: 'method', label: 'Спосіб', cardTop: true, render: (p) => <Badge variant="info">{PAYMENT_METHODS[p.payment_method] || p.payment_method}</Badge> },
               { key: 'admin', label: 'Менеджер', render: (p) => <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{p.admin_name || '—'}</span> },
-              { key: 'amount', label: 'Сума', mobile: 'trailing', render: (p) => <span style={{ fontWeight: 600, color: 'var(--success)' }}>{formatMoney(p.amount)}</span> },
+              { key: 'amount', label: 'Сума', mobile: 'trailing', render: (p) => (parseFloat(p.amount) < 0
+                ? <span style={{ fontWeight: 600, color: 'var(--danger)' }} title={p.refund_reason || ''}>↩ {formatMoney(p.amount)}</span>
+                : <span style={{ fontWeight: 600, color: 'var(--success)' }}>{formatMoney(p.amount)}</span>) },
               {
                 key: 'actions', label: '',
-                render: (p) => has('payments.delete') && (
-                  <button
-                    className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }}
-                    onClick={(e) => { e.stopPropagation(); handleDeletePayment(p.id); }}
-                  >🗑</button>
-                ),
+                // Оплату закритої зміни не видаляють — лише «Повернення» на сторінці «Оплати»
+                render: (p) => has('payments.delete') && (Number(p.is_locked) || parseFloat(p.refunded_amount) > 0
+                  ? <Link to="/payments" className="btn btn-ghost btn-sm" title="Оплата закритої зміни — виправлення через «↩ Повернення» на сторінці «Оплати»" onClick={(e) => e.stopPropagation()}>↩</Link>
+                  : (
+                    <button
+                      className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }}
+                      onClick={(e) => { e.stopPropagation(); handleDeletePayment(p.id); }}
+                    >🗑</button>
+                  )),
               },
             ]}
             rows={payTab?.rows || []}

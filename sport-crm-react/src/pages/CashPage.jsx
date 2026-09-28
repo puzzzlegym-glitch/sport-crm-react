@@ -99,15 +99,19 @@ export default function CashPage() {
     setCloseShiftModal({
       openedName: res.shift?.opened_name, openedAt: res.shift?.opened_at,
       balanceOpen: res.shift?.balance_open, balanceNow: res.balance,
-      notes: '', error: '', submitting: false,
+      counted: '', notes: '', error: '', submitting: false,
     });
   }
 
   async function submitCloseShift() {
+    if (closeShiftModal.counted === '' || Number(closeShiftModal.counted) < 0) {
+      setCloseShiftModal({ ...closeShiftModal, error: 'Перерахуйте готівку і вкажіть, скільки фактично в касі' });
+      return;
+    }
     setCloseShiftModal({ ...closeShiftModal, submitting: true, error: '' });
-    const res = await closeCashShift(shift.id, closeShiftModal.notes.trim());
+    const res = await closeCashShift(shift.id, closeShiftModal.notes.trim(), parseFloat(closeShiftModal.counted));
     if (!res.success) { setCloseShiftModal({ ...closeShiftModal, submitting: false, error: res.error }); return; }
-    toast(`Зміну закрито. Початок: ${formatMoney(res.balance_open)} → Кінець: ${formatMoney(res.balance_close)}`, 'success');
+    toast(res.message, Math.abs(res.discrepancy || 0) >= 0.01 ? 'warning' : 'success', 6000);
     setCloseShiftModal(null);
     await reloadSummary();
     refresh();
@@ -277,7 +281,7 @@ export default function CashPage() {
             <button className="btn btn-ghost" {...lockedProps} onClick={guard(handleOpenExpense)}>+ Витрата</button>
             <button className="btn btn-ghost" {...lockedProps} onClick={guard(handleOpenEncashment)}>⬇ Інкасація в сейф</button>
             <button className="btn btn-ghost" {...lockedProps} onClick={guard(handleOpenRefill)}>⬆ Поповнити з сейфа</button>
-            <button className="btn btn-ghost" onClick={handleOpenAdjust}>⚖ Коригування</button>
+            {isOwner && <button className="btn btn-ghost" onClick={handleOpenAdjust}>⚖ Коригування</button>}
           </div>
         )}
       </div>
@@ -347,8 +351,17 @@ export default function CashPage() {
               <div>Відкрив: <strong>{closeShiftModal.openedName || '—'}</strong></div>
               <div>Час відкриття: <strong>{closeShiftModal.openedAt ? formatDate(closeShiftModal.openedAt) : '—'}</strong></div>
               <div>На початок: <strong>{closeShiftModal.balanceOpen !== undefined ? formatMoney(closeShiftModal.balanceOpen) : '—'}</strong></div>
-              <div>На кінець (зараз): <strong>{closeShiftModal.balanceNow !== undefined ? formatMoney(closeShiftModal.balanceNow) : '—'}</strong></div>
+              {/* Сліпа звірка: адміністратор рахує готівку, не бачачи очікуваної суми; власник бачить */}
+              {isOwner && <div>Очікувано в касі: <strong>{closeShiftModal.balanceNow !== undefined ? formatMoney(closeShiftModal.balanceNow) : '—'}</strong></div>}
             </div>
+            <FormGroup label="Фактично в касі (перерахуйте готівку), грн *">
+              <input type="number" step="0.01" min="0" autoFocus placeholder="напр. 1250" value={closeShiftModal.counted} onChange={(e) => setCloseShiftModal({ ...closeShiftModal, counted: e.target.value })} />
+            </FormGroup>
+            {isOwner && closeShiftModal.counted !== '' && closeShiftModal.balanceNow !== undefined && (() => {
+              const diff = Math.round((parseFloat(closeShiftModal.counted) - Number(closeShiftModal.balanceNow)) * 100) / 100;
+              if (Math.abs(diff) < 0.01) return <div className="alert alert-success" style={{ marginBottom: 16 }}>Каса зійшлася</div>;
+              return <div className="alert alert-error" style={{ marginBottom: 16 }}>{diff < 0 ? 'Недостача' : 'Надлишок'}: {formatMoney(Math.abs(diff))} — буде записано в журнал каси</div>;
+            })()}
             <FormGroup label="Коментар (необов'язково)">
               <input type="text" placeholder="Підсумок зміни..." value={closeShiftModal.notes} onChange={(e) => setCloseShiftModal({ ...closeShiftModal, notes: e.target.value })} />
             </FormGroup>
@@ -459,7 +472,7 @@ export default function CashPage() {
           <>
             {adjustModal.error && <div className="alert alert-error">{adjustModal.error}</div>}
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
-              Використовується для стартового залишку або при розбіжності з фактичним перерахунком готівки. Сума додається до балансу — від'ємне число зменшить його.
+              Для стартового залишку або виправлення помилки. Сума додається до балансу — від'ємне число зменшить його. Розбіжність при здачі зміни фіксується автоматично («Фактично в касі» при закритті зміни). Про кожне коригування надходить сповіщення в Telegram.
             </p>
             <FormGroup label="Локація">
               <select value={adjustModal.location} onChange={(e) => setAdjustModal({ ...adjustModal, location: e.target.value })}>
@@ -470,8 +483,8 @@ export default function CashPage() {
             <FormGroup label="Сума (грн, зі знаком) *">
               <input type="number" step="0.01" placeholder="напр. 500 або -120" value={adjustModal.amount} onChange={(e) => setAdjustModal({ ...adjustModal, amount: e.target.value })} />
             </FormGroup>
-            <FormGroup label="Коментар">
-              <input type="text" placeholder="Стартовий залишок / перерахунок готівки..." value={adjustModal.notes} onChange={(e) => setAdjustModal({ ...adjustModal, notes: e.target.value })} />
+            <FormGroup label="Причина *">
+              <input type="text" placeholder="Стартовий залишок / виправлення помилки..." value={adjustModal.notes} onChange={(e) => setAdjustModal({ ...adjustModal, notes: e.target.value })} />
             </FormGroup>
           </>
         )}

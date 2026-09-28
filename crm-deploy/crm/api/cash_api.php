@@ -191,13 +191,17 @@ try { switch ($action) {
 
 
     // ════ КОРИГУВАННЯ БАЛАНСУ (стартовий залишок / розбіжність при перерахунку) ══
+    // Лише власник і з причиною: інакше коригуванням можна "сховати" нестачу.
+    // Розбіжність, знайдена адміністратором, фіксується при закритті зміни (counted_amount).
     case 'adjust_balance':
         if (!Auth::can($sess, $clubId, 'cash.record')) Response::forbidden();
+        if (!$isOwner) Response::forbidden('Коригування залишку — лише власник. Розбіжність при перерахунку вкажіть при закритті зміни («Фактично в касі»).');
         $location = trim($input['location'] ?? 'register');
         if (!in_array($location, ['register','safe'])) Response::error('Невірна локація');
         $amount = round((float)($input['amount'] ?? 0), 2);
-        $desc   = trim($input['notes'] ?? '') ?: 'Коригування балансу';
+        $desc   = trim($input['notes'] ?? '');
         if ($amount == 0) Response::error('Сума коригування не може бути 0');
+        if (mb_strlen($desc) < 3) Response::error('Вкажіть причину коригування');
         $shiftId = null;
         if ($location === 'register') {
             $shift = requireOwnShift($pdo, $clubId, $userId, $isOwner);
@@ -208,6 +212,13 @@ try { switch ($action) {
               (club_id,type,category,description,amount,payment_method,source,shift_id,location,admin_id,admin_name)
             VALUES (?,'adjustment','Коригування',?,?,'cash','adjustment',?,?,?,?)
         ")->execute([$clubId,$desc,$amount,$shiftId,$location,$userId,$sess['full_name']??'Адмін']);
+        try {
+            Telegram::notifyClubOwners($clubId, "⚖️ Коригування " . ($location === 'safe' ? 'сейфа' : 'каси') . ": "
+                . ($amount > 0 ? '+' : '') . number_format($amount, 2) . " грн. Причина: "
+                . htmlspecialchars($desc, ENT_NOQUOTES, 'UTF-8') . ". Провів(ла): " . ($sess['full_name'] ?? '—'));
+        } catch (Throwable $e) {
+            error_log('[Cash] Telegram notify failed: ' . $e->getMessage());
+        }
         Response::ok([], 'Баланс скориговано');
 
 
@@ -280,21 +291,43 @@ try { switch ($action) {
         if (!$shift) Response::error('Активну зміну не знайдено');
         if (!$isOwner && (int)$shift['opened_by'] !== $userId)
             Response::error('Ви можете закрити лише свою зміну. Зверніться до власника клубу.', 403);
+        // Фактично пораховано в касі — обов'язково (перерахунок готівки при здачі зміни).
+        $countedRaw = $input['counted_amount'] ?? null;
+        if ($countedRaw === null || $countedRaw === '' || !is_numeric($countedRaw) || (float)$countedRaw < 0) {
+            Response::error('Перерахуйте готівку і вкажіть, скільки фактично в касі');
+        }
+        $counted      = round((float)$countedRaw, 2);
         $name         = $sess['full_name'] ?? 'Адмін';
-        $balanceClose = CashShiftService::close($pdo, $shift, $userId, $name, 'manual', trim($input['notes']??'')?:null);
-        $totals = $pdo->prepare("
-            SELECT COALESCE(SUM(CASE WHEN type IN('income','transfer_in') THEN amount ELSE 0 END),0) AS inc,
-                   COALESCE(SUM(CASE WHEN type IN('expense','encashment','transfer_out') THEN amount ELSE 0 END),0) AS exp
-            FROM club_cashflow WHERE club_id=? AND payment_method='cash' AND location='register' AND shift_id=?
-        ");
-        $totals->execute([$clubId, $shiftId]);
-        $t = $totals->fetch();
+        $pdo->beginTransaction();
+        try {
+            $balanceClose = CashShiftService::close($pdo, $shift, $userId, $name, 'manual', trim($input['notes']??'')?:null, $counted);
+            $pdo->commit();
+        } catch (Throwable $e) { $pdo->rollBack(); Response::serverError($e->getMessage()); }
+        $closed = $pdo->prepare("SELECT income_shift, expense_shift, adjustments_shift, discrepancy FROM cash_shifts WHERE id=?");
+        $closed->execute([$shiftId]);
+        $t = $closed->fetch();
+        $discrepancy = (float)$t['discrepancy'];
+
+        if (abs($discrepancy) >= 0.01) {
+            try {
+                Telegram::notifyClubOwners($clubId, ($discrepancy < 0 ? "🔴 Недостача" : "🟡 Надлишок")
+                    . " при закритті зміни: " . number_format($discrepancy, 2) . " грн. Адміністратор: {$name}. "
+                    . "Фактично в касі: " . number_format($counted, 2) . " грн.");
+            } catch (Throwable $e) {
+                error_log('[Cash] Telegram notify failed: ' . $e->getMessage());
+            }
+        }
+
         Response::ok([
-            'balance_open'  => (float)$shift['balance_open'],
-            'balance_close' => $balanceClose,
-            'income_shift'  => (float)$t['inc'],
-            'expense_shift' => (float)$t['exp'],
-        ], 'Зміну закрито');
+            'balance_open'      => (float)$shift['balance_open'],
+            'balance_close'     => $balanceClose,
+            'income_shift'      => (float)$t['income_shift'],
+            'expense_shift'     => (float)$t['expense_shift'],
+            'adjustments_shift' => (float)$t['adjustments_shift'],
+            'discrepancy'       => $discrepancy,
+        ], abs($discrepancy) >= 0.01
+            ? ($discrepancy < 0 ? 'Зміну закрито. Недостача: ' : 'Зміну закрито. Надлишок: ') . number_format(abs($discrepancy), 2, '.', ' ') . ' грн'
+            : 'Зміну закрито. Каса зійшлася');
 
 
     // ════ ЖУРНАЛ ЗМІН ════════════════════════════════════════
@@ -308,7 +341,8 @@ try { switch ($action) {
         $total = (int)$cntSt->fetchColumn();
         $st = $pdo->prepare("
             SELECT id,opened_name,opened_at,balance_open,closed_name,closed_at,
-                   balance_close,income_shift,expense_shift,notes,status,closed_reason
+                   balance_close,balance_counted,discrepancy,
+                   income_shift,expense_shift,adjustments_shift,notes,status,closed_reason
             FROM cash_shifts WHERE club_id=? AND DATE(opened_at) BETWEEN ? AND ?
             ORDER BY opened_at DESC LIMIT ? OFFSET ?
         ");

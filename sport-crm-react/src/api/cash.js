@@ -9,4 +9,4 @@ export const adjustCashBalance = (payload) => api('adjust_balance', payload, 'ca
 export const deleteCashRow = (id) => api('delete', { id }, 'cash');
 export const getCashShift = () => api('get_shift', {}, 'cash');
 export const openCashShift = (notes) => api('open_shift', { notes }, 'cash');
-export const closeCashShift = (shiftId, notes) => api('close_shift', { shift_id: shiftId, notes }, 'cash');
+export const closeCashShift = (shiftId, notes, countedAmount) => api('close_shift', { shift_id: shiftId, notes, counted_amount: countedAmount }, 'cash');

@@ -258,16 +258,22 @@ class Recalc
             return;
         }
 
+        // Повернення (сторно) — рядок club_payments з від'ємною сумою; у касі це витрата.
+        $isRefund = (float)$row['amount'] < 0;
         $pdo->prepare("
             INSERT INTO club_cashflow
               (club_id, type, category, description, amount, payment_method,
                source, source_id, shift_id, admin_id, admin_name)
-            VALUES (?, 'income', 'Абонемент', 'Оплата абонементу', ?, 'cash', 'invoice', ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, 'cash', 'invoice', ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE
-              club_id = VALUES(club_id), amount = VALUES(amount),
+              club_id = VALUES(club_id), type = VALUES(type), amount = VALUES(amount),
               shift_id = VALUES(shift_id), admin_id = VALUES(admin_id), admin_name = VALUES(admin_name)
         ")->execute([
-            $row['club_id'], $row['amount'], $paymentId,
+            $row['club_id'],
+            $isRefund ? 'expense' : 'income',
+            $isRefund ? 'Повернення оплати' : 'Абонемент',
+            $isRefund ? 'Повернення оплати абонементу' : 'Оплата абонементу',
+            abs((float)$row['amount']), $paymentId,
             $row['shift_id'], $row['admin_id'], $row['admin_name'],
         ]);
     }
