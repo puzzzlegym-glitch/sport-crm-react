@@ -13,7 +13,10 @@ import {
   markGroupSessionAttendance, completeGroupSession,
 } from '../api/groupSessions';
 import { getClients } from '../api/clients';
-import { formatDate, formatTime, localToday } from '../utils/format';
+import { formatDate, localToday } from '../utils/format';
+
+// start_time/end_time — MySQL TIME ('18:00:00'), не дата: formatTime() дає Invalid Date
+const hhmm = (t) => (t ? String(t).slice(0, 5) : '');
 
 const EMPTY_FORM = {
   id: null, trainer_id: '', name: '', session_date: localToday(),
@@ -178,7 +181,7 @@ export default function GroupSessionsPage() {
         </>
       ),
     },
-    { key: 'date', label: 'Дата / Час', mobile: 'secondary', render: (s) => `${formatDate(s.session_date)} ${formatTime(s.start_time)}` },
+    { key: 'date', label: 'Дата / Час', mobile: 'secondary', render: (s) => `${formatDate(s.session_date)} ${hhmm(s.start_time)}${s.end_time ? `–${hhmm(s.end_time)}` : ''}` },
     { key: 'trainer', label: 'Тренер', mobile: 'secondary', render: (s) => s.trainer_name },
     {
       key: 'roster', label: 'Учасники', mobile: 'trailing',
@@ -278,7 +281,7 @@ export default function GroupSessionsPage() {
         {detail && (
           <>
             <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 14, fontSize: 13, color: 'var(--text-muted)' }}>
-              <span>{formatDate(detail.session.session_date)} {formatTime(detail.session.start_time)}{detail.session.end_time ? `–${formatTime(detail.session.end_time)}` : ''}</span>
+              <span>{formatDate(detail.session.session_date)} {hhmm(detail.session.start_time)}{detail.session.end_time ? `–${hhmm(detail.session.end_time)}` : ''}</span>
               <span>Тренер: {detail.session.trainer_name}</span>
               <span>Учасників: {detail.roster.filter((r) => r.status !== 'canceled').length}{detail.session.capacity ? ` / ${detail.session.capacity}` : ''}</span>
               <Badge variant={STATUS_VARIANT[detail.session.status]}>{STATUS_LABEL[detail.session.status]}</Badge>

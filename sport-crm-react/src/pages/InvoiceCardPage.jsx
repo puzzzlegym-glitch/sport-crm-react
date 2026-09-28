@@ -335,7 +335,9 @@ export default function InvoiceCardPage() {
     { key: 'method', label: 'Тип', cardTop: true, render: (p) => <Badge variant="info">{PAY_METHOD_LABELS[p.payment_method] || p.payment_method}</Badge> },
     { key: 'status', label: 'Статус', render: (p) => p.fiscal_status ? <span style={{ fontSize: 12 }}>{FISCAL_STATUS_LABELS[p.fiscal_status] || p.fiscal_status}</span> : <span className="text-muted">—</span> },
     { key: 'comment', label: 'Коментар', render: (p) => <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{p.notes || '—'}</span> },
-    { key: 'amount', label: 'Сума', mobile: 'trailing', render: (p) => <span style={{ fontWeight: 600, color: 'var(--success)' }}>{formatMoney(p.amount)}</span> },
+    { key: 'amount', label: 'Сума', mobile: 'trailing', render: (p) => (Number(p.amount) < 0
+      ? <span style={{ fontWeight: 600, color: 'var(--danger)' }} title="Повернення">↩ {formatMoney(p.amount)}</span>
+      : <span style={{ fontWeight: 600, color: 'var(--success)' }}>{formatMoney(p.amount)}</span>) },
   ];
   const visitColumns = [
     { key: 'date', label: 'Дата', render: (v) => <span style={{ fontSize: 13, whiteSpace: 'nowrap' }}>{formatDate(v.visited_at)} {formatTime(v.visited_at)}</span> },
@@ -618,7 +620,7 @@ export default function InvoiceCardPage() {
                     </div>
                     <div style={{ paddingTop: 12, borderTop: '1px solid var(--border)' }}>
                       <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>
-                        Змінити кількість днів заморозки (напр. на прохання клієнта) — термін дії перерахується автоматично{(inv.tariff_freeze_min > 0 || inv.tariff_freeze_max > 0) ? `, дозволено ${freezeDaysMin}–${inv.tariff_freeze_max > 0 ? freezeDaysMax : '∞'} дн.` : ''}.
+                        Змінити кількість днів заморозки (напр. на прохання клієнта) — термін дії перерахується автоматично{(inv.tariff_freeze_min > 0 || inv.tariff_freeze_max > 0) ? `, дозволено ${freezeDaysMin}–${inv.tariff_freeze_max > 0 ? freezeDaysMax : '∞'} дн` : ''}.
                       </div>
                       <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
                         <FormGroup label="Днів заморозки">
@@ -761,7 +763,7 @@ export default function InvoiceCardPage() {
                 </div>
               )}
             </FormGroup>
-            {renewTariff?.has_trainer && (
+            {!!renewTariff?.has_trainer && (
               <FormGroup label="Тренер (рекомендований)">
                 <select value={renew.trainerId} onChange={(e) => setRenew({ ...renew, trainerId: e.target.value })}>
                   <option value="">— Без тренера —</option>

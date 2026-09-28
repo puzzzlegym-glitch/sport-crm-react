@@ -159,13 +159,14 @@ class Billing
 
     /**
      * SQL-вираз для "активний абонемент" (без залежності від status).
-     * Активний = не скасований, не заморожений, дата не минула, візити не вичерпані.
+     * Активний = не скасований, не заморожений, дата не минула, візити не вичерпані
+     * (visits_total NULL = безліміт — раніше такі абонементи не рахувались).
      */
     private static function activeInvoiceExpr(): string
     {
         return "status NOT IN ('cancelled','frozen')
             AND end_date >= CURDATE()
-            AND (visits_total = 0 OR visits_used < visits_total)";
+            AND (visits_total IS NULL OR visits_total = 0 OR visits_used < visits_total)";
     }
 
     /**

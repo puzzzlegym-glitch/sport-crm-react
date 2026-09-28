@@ -68,6 +68,7 @@ function activityDescription(a) {
   if (a.type === 'visit') return a.notes || 'Тренування';
   if (a.type === 'payment') {
     const method = PAYMENT_METHODS[a.payment_method] || a.payment_method;
+    if (Number(a.amount) < 0) return a.tariff_name ? `Повернення оплати за «${a.tariff_name}» (${method})` : `Повернення оплати (${method})`;
     return a.tariff_name ? `Оплата абонемента «${a.tariff_name}» (${method})` : `Оплата (${method})`;
   }
   if (a.type === 'sale') return a.notes || 'Продаж товару';
@@ -614,7 +615,9 @@ export default function ClientCardPage() {
               <Table
                 columns={[
                   { key: 'date', label: 'Дата', render: (a) => <span style={{ fontSize: 13, whiteSpace: 'nowrap' }}>{formatDate(a.event_at)} {formatTime(a.event_at)}</span> },
-                  { key: 'type', label: 'Тип', cardTop: true, render: (a) => <Badge variant={a.type === 'payment' ? 'active' : a.type === 'sale' ? 'info' : 'pending'}>{ACTIVITY_LABELS[a.type] || a.type}</Badge> },
+                  { key: 'type', label: 'Тип', cardTop: true, render: (a) => {a.type === 'payment' && Number(a.amount) < 0
+                    ? <Badge variant="inactive">Повернення</Badge>
+                    : <Badge variant={a.type === 'payment' ? 'active' : a.type === 'sale' ? 'info' : 'pending'}>{ACTIVITY_LABELS[a.type] || a.type}</Badge>} },
                   { key: 'desc', label: 'Опис', render: (a) => <span style={{ fontSize: 13 }}>{activityDescription(a)}</span> },
                   { key: 'amount', label: 'Сума', mobile: 'trailing', render: (a) => a.amount != null ? <span style={{ fontWeight: 600 }}>{formatMoney(a.amount)}</span> : <span className="text-muted">—</span> },
                 ]}

@@ -145,7 +145,8 @@ export default function DashboardPage() {
 
   const cardsView = useMemo(() => {
     if (!data) return null;
-    return CARD_ORDER.map((key) => {
+    // Без права на фінанси сервер повертає лише visits/invoices — інші картки не показуємо
+    return CARD_ORDER.filter((key) => data[key]).map((key) => {
       const meta = CARDS[key];
       const d = data[key] || {};
       const isMoney = meta.fmt === 'money';
@@ -153,7 +154,7 @@ export default function DashboardPage() {
       let sub = '';
       if (key === 'cash') sub = (d.amount ?? 0) >= 0 ? 'готівка' : 'витрати > надходжень';
       else if (key === 'visits') sub = 'чол.';
-      else sub = formatMoney(d.amount ?? 0);
+      else sub = d.amount === undefined ? '' : formatMoney(d.amount);
       const neg = key === 'cash' && (d.amount ?? 0) < 0;
       const delta = computeDelta(trend, key, meta.field);
       const spark = trend?.current ? sparkPoints(trend.current.map((day) => day[key]?.[meta.field] || 0)) : '';
@@ -168,7 +169,10 @@ export default function DashboardPage() {
     const field = meta.field;
     const W = chartWidth, H = 160, pt = 16, pb = 28, pl = 44, pr = 12;
     const vals = days.map((d) => d[activeKey]?.[field] || 0);
-    const maxVal = Math.max(...vals, 1);
+    // Для лічильників верх шкали кратний 4 — інакше 4 поділки дають дробові значення,
+    // а після округлення підписи повторюються ("1, 1, 1, 0, 0").
+    const rawMax = Math.max(...vals, 1);
+    const maxVal = meta.fmt === 'money' ? rawMax : Math.ceil(rawMax / 4) * 4;
     const step = (W - pl - pr) / days.length;
     const bW = Math.max(8, Math.min(64, Math.floor(step * 0.6)));
     const isMoney = meta.fmt === 'money';

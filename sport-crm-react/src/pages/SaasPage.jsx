@@ -307,7 +307,7 @@ export default function SaasPage() {
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, gap: 6, flexWrap: 'wrap' }}>
                     <div style={{ fontSize: 16, fontWeight: 700 }}>{p.name}</div>
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                      {p.is_free && <Badge variant="active">Free</Badge>}
+                      {!!p.is_free && <Badge variant="active">Free</Badge>}
                       {p.trial_days > 0 && <Badge variant="info">Тріал {p.trial_days}д</Badge>}
                       {!p.is_active && <Badge variant="inactive">Вимкнено</Badge>}
                       {planDiscountActive(p) && (
@@ -527,7 +527,7 @@ export default function SaasPage() {
                     <td>
                       <div style={{ display: 'flex', gap: 4, whiteSpace: 'nowrap' }}>
                         <button className="btn btn-ghost btn-sm" onClick={() => openPromoEdit(p)}><Icon name="edit" size={13} /></button>
-                        {p.is_used && <button className="btn btn-ghost btn-sm" title="Розблокувати" onClick={() => handleResetPromo(p.id)}><Icon name="undo" size={13} /></button>}
+                        {!!p.is_used && <button className="btn btn-ghost btn-sm" title="Розблокувати" onClick={() => handleResetPromo(p.id)}><Icon name="undo" size={13} /></button>}
                         <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => handleDeletePromo(p.id)}><Icon name="trash" size={13} /></button>
                       </div>
                     </td>

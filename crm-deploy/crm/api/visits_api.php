@@ -113,7 +113,9 @@ try { switch ($action) {
             if (!$force) Response::error('Вичерпано всі відвідування абонементу.', 403);
             $warning = 'Ліміт відвідувань вичерпано (обхід власником)';
         } elseif ((int)$invoice['days_left'] <= 3) {
-            $warning = "Абонемент закінчується через {$invoice['days_left']} дн.";
+            $warning = (int)$invoice['days_left'] === 0
+                ? 'Абонемент закінчується сьогодні'
+                : "Абонемент закінчується через {$invoice['days_left']} дн.";
         }
 
         // Захист від подвійного сканування (5 хвилин)
@@ -144,6 +146,8 @@ try { switch ($action) {
         );
 
         Attendance::createTrainerEarning($pdo, $clubId, $visitId, $invoice['id'] ?? null, $invoice['trainer_id'] ?? null);
+        // Дані абонемента читались ДО запису відмітки — показуємо вже з цим заняттям.
+        if ($invoice) $invoice['visits_used'] = (int)$invoice['visits_used'] + 1;
 
         Response::ok([
             'visit_id' => $visitId,

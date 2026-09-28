@@ -400,7 +400,7 @@ export default function InvoicesPage() {
                 </div>
               )}
             </FormGroup>
-            {selectedSellTariff?.has_trainer && (
+            {!!selectedSellTariff?.has_trainer && (
               <FormGroup label="Тренер (рекомендований)">
                 <select value={sell.trainerId} onChange={(e) => setSell({ ...sell, trainerId: e.target.value })}>
                   <option value="">— Без тренера —</option>

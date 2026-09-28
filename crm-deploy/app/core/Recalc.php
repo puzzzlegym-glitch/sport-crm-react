@@ -245,6 +245,22 @@ class Recalc
             return;
         }
 
+        // Нова готівкова витрата без зміни (прихід товару, виплата тренеру, витрата з
+        // «Фінансів») — гроші беруть з каси, тож прив'язуємо до відкритої зараз зміни,
+        // інакше витрата не потрапляє в підсумок зміни. Існуючі записи не переносимо.
+        if (!$row['shift_id']) {
+            $exists = $pdo->prepare("SELECT 1 FROM club_cashflow WHERE source = 'expense' AND source_id = ?");
+            $exists->execute([$expenseId]);
+            if (!$exists->fetchColumn()) {
+                $sh = $pdo->prepare("SELECT id FROM cash_shifts WHERE club_id = ? AND status = 'open' LIMIT 1");
+                $sh->execute([$row['club_id']]);
+                if ($openShift = $sh->fetchColumn()) {
+                    $row['shift_id'] = (int)$openShift;
+                    $pdo->prepare("UPDATE club_expenses SET shift_id = ? WHERE id = ?")->execute([$row['shift_id'], $expenseId]);
+                }
+            }
+        }
+
         $pdo->prepare("
             INSERT INTO club_cashflow
               (club_id, type, category, description, amount, payment_method,
@@ -290,6 +306,63 @@ class Recalc
             abs((float)$row['amount']), $paymentId,
             $row['shift_id'], $row['admin_id'], $row['admin_name'],
         ]);
+    }
+
+    /**
+     * Готівкове поповнення депозиту клієнта — надходження в касу
+     * (раніше не потрапляло в club_cashflow: при закритті зміни був "надлишок").
+     */
+    public static function cashflowSyncDeposit(PDO $pdo, int $depositId): void
+    {
+        $st = $pdo->prepare("SELECT * FROM client_deposits WHERE id = ?");
+        $st->execute([$depositId]);
+        $row = $st->fetch();
+        if (!$row || $row['operation'] !== 'top_up' || ($row['payment_method'] ?? '') !== 'cash' || (float)$row['amount'] <= 0) {
+            $pdo->prepare("DELETE FROM club_cashflow WHERE source = 'deposit' AND source_id = ?")->execute([$depositId]);
+            return;
+        }
+        self::upsertCashIncome($pdo, (int)$row['club_id'], 'deposit', $depositId, 'Депозит',
+            'Поповнення депозиту клієнта', (float)$row['amount'], $row['admin_id'], $row['admin_name']);
+    }
+
+    /**
+     * Продаж подарункового сертифіката за готівку — надходження в касу.
+     * Скасований продаж прибирає запис.
+     */
+    public static function cashflowSyncCertificateSale(PDO $pdo, int $saleId): void
+    {
+        $st = $pdo->prepare("SELECT * FROM certificate_sales WHERE id = ?");
+        $st->execute([$saleId]);
+        $row = $st->fetch();
+        if (!$row || $row['status'] === 'cancelled' || $row['payment_method'] !== 'cash') {
+            $pdo->prepare("DELETE FROM club_cashflow WHERE source = 'certificate' AND source_id = ?")->execute([$saleId]);
+            return;
+        }
+        self::upsertCashIncome($pdo, (int)$row['club_id'], 'certificate', $saleId, 'Сертифікат',
+            'Продаж подарункового сертифіката', (float)$row['amount'], $row['sold_admin_id'], $row['sold_admin_name']);
+    }
+
+    // Новий запис — у відкриту зараз зміну; існуючий зберігає свою зміну й дату.
+    private static function upsertCashIncome(PDO $pdo, int $clubId, string $source, int $sourceId,
+        string $category, string $description, float $amount, $adminId, $adminName): void
+    {
+        $ex = $pdo->prepare("SELECT shift_id FROM club_cashflow WHERE source = ? AND source_id = ?");
+        $ex->execute([$source, $sourceId]);
+        $existing = $ex->fetch();
+        if ($existing) {
+            $shiftId = $existing['shift_id'];
+        } else {
+            $sh = $pdo->prepare("SELECT id FROM cash_shifts WHERE club_id = ? AND status = 'open' LIMIT 1");
+            $sh->execute([$clubId]);
+            $shiftId = $sh->fetchColumn() ?: null;
+        }
+        $pdo->prepare("
+            INSERT INTO club_cashflow
+              (club_id, type, category, description, amount, payment_method,
+               source, source_id, shift_id, admin_id, admin_name)
+            VALUES (?, 'income', ?, ?, ?, 'cash', ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE amount = VALUES(amount), category = VALUES(category), description = VALUES(description)
+        ")->execute([$clubId, $category, $description, $amount, $source, $sourceId, $shiftId, $adminId, $adminName]);
     }
 
     public static function cashflowSyncSale(PDO $pdo, int $saleId): void

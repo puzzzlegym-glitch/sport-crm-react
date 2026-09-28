@@ -39,6 +39,13 @@ function requireOwnShift(PDO $pdo, int $clubId, int $userId, bool $isOwner): arr
     return $shift;
 }
 
+// Перегляд каси (залишок, журнал, зміни) — лише з правом cash.view.
+// Раніше читання було відкрите будь-кому з рівнем 30+ (у т.ч. тренеру).
+if (in_array($action, ['get_summary', 'get_list', 'get_shift', 'get_shifts'], true)
+    && !Auth::can($sess, $clubId, 'cash.view')) {
+    Response::forbidden('Немає доступу до каси');
+}
+
 try { switch ($action) {
 
     // ════ ПІДСУМОК ════════════════════════════════════════════

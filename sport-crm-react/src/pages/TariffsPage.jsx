@@ -242,7 +242,7 @@ export default function TariffsPage() {
                 Цей тариф передбачає тренера
               </label>
             </FormGroup>
-            {form.has_trainer && (
+            {!!form.has_trainer && (
               <FormGroup label="Коли тренер отримує нарахування">
                 <select value={form.earn_release_trigger} onChange={(e) => setForm({ ...form, earn_release_trigger: e.target.value })}>
                   <option value="on_each_visit">Одразу за кожне заняття</option>
@@ -251,7 +251,7 @@ export default function TariffsPage() {
                 </select>
               </FormGroup>
             )}
-            {form.has_trainer && (
+            {!!form.has_trainer && (
               <div style={{ gridColumn: '1/-1', fontSize: 12, color: 'var(--text-muted)', marginTop: -8, marginBottom: 8 }}>
                 Сума нарахування тренеру визначається профілем тренера (сторінка «Тренери»), не тарифом.
               </div>

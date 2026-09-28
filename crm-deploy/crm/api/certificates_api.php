@@ -173,6 +173,7 @@ try { switch ($action) {
                 $sess['user_id'], $sess['full_name'] ?? null,
             ]);
 
+            Recalc::cashflowSyncCertificateSale($pdo, (int)$pdo->lastInsertId());
             $pdo->prepare("UPDATE certificates SET status='sold' WHERE id=?")->execute([$certId]);
 
             $pdo->commit();
@@ -240,6 +241,7 @@ try { switch ($action) {
                     trim($input['notes'] ?? '') ?: null,
                     $saleId,
                 ]);
+                Recalc::cashflowSyncCertificateSale($pdo, (int)$saleId);
             }
 
             $pdo->commit();
@@ -336,6 +338,7 @@ try { switch ($action) {
         $pdo->prepare("
             UPDATE certificate_sales SET status='cancelled', cancel_reason=?, cancelled_at=NOW() WHERE id=?
         ")->execute([trim($input['reason'] ?? '') ?: null, $saleId]);
+        Recalc::cashflowSyncCertificateSale($pdo, (int)$saleId);
         $pdo->prepare("UPDATE certificates SET status='available' WHERE id=?")->execute([$cert['id']]);
 
         Response::ok([], 'Продаж сертифіката скасовано');

@@ -106,6 +106,15 @@ if ($action === 'get_dashboard') {
         $arr->execute([$clubId, $d1, $d2]);
         $a = $arr->fetch();
 
+        // Без права "Перегляд фінансів" (тренер за замовчуванням) — лише відвідування й
+        // кількість абонементів, без грошей клубу (каса, оплати, продажі, закупівлі).
+        if (!Auth::can($sess, $clubId, 'finance.view')) {
+            Response::ok(['data' => [
+                'invoices' => ['count' => (int)$i['cnt']],
+                'visits'   => ['count' => (int)$v['cnt']],
+            ], 'restricted' => true]);
+        }
+
         Response::ok(['data' => [
             'cash'     => [
                 'amount'   => $cashByLocation['register'] + $cashByLocation['safe'],
@@ -196,6 +205,12 @@ if ($action === 'get_dashboard_trend') {
     $current  = array_map(fn($d) => dayStats($pdo, $clubId, $d, $d), $curDays);
     $previous = array_map(fn($d) => dayStats($pdo, $clubId, $d, $d), $prevDays);
 
+    if (!Auth::can($sess, $clubId, 'finance.view')) {
+        // Те саме обмеження, що й у get_dashboard: без грошових показників.
+        $strip = fn(array $day) => array_intersect_key($day, array_flip(['date', 'day', 'visits', 'invoices']));
+        $current  = array_map(fn($d) => ['invoices' => ['count' => $d['invoices']['count'] ?? 0]] + $strip($d), $current);
+        $previous = array_map(fn($d) => ['invoices' => ['count' => $d['invoices']['count'] ?? 0]] + $strip($d), $previous);
+    }
     Response::ok(['trend' => ['current' => $current, 'previous' => $previous]]);
 }
 
@@ -588,6 +603,7 @@ try { switch ($action) {
             $sess['user_id'], $sess['full_name'] ?? null,
             trim($input['notes'] ?? '') ?: null,
         ]);
+        Recalc::cashflowSyncDeposit($pdo, (int)$pdo->lastInsertId());
         Recalc::clientBalance($pdo, $clientId);
 
         // Новий баланс
@@ -628,6 +644,7 @@ try { switch ($action) {
             UPDATE client_deposits SET amount=?, payment_method=?, notes=?
             WHERE id=? AND club_id=?
         ")->execute([$amount, $method, $notes ?: null, $id, $clubId]);
+        Recalc::cashflowSyncDeposit($pdo, $id);
         Recalc::clientBalance($pdo, (int)$old['client_id']);
 
         Response::ok([], 'Депозит оновлено');
@@ -658,6 +675,7 @@ try { switch ($action) {
             Response::error('Видалити депозит можна лише в день внесення', 403);
 
         $pdo->prepare("DELETE FROM client_deposits WHERE id=? AND club_id=?")->execute([$id, $clubId]);
+        Recalc::cashflowSyncDeposit($pdo, $id);
         Recalc::clientBalance($pdo, (int)$old['client_id']);
 
         Response::ok([], 'Депозит видалено');

@@ -240,7 +240,7 @@ try { switch ($action) {
                             (SELECT COUNT(*) FROM clients WHERE club_id=?) AS clients_cnt,
                             (SELECT COUNT(*) FROM sys_user_clubs WHERE club_id=? AND is_active=1) AS users_cnt,
                             (SELECT COUNT(*) FROM client_invoices WHERE club_id=?
-                             AND (end_date >= CURDATE() AND visits_used < visits_total)
+                             AND (end_date >= CURDATE() AND (visits_total IS NULL OR visits_used < visits_total))
                              AND status NOT IN ('frozen','cancelled')) AS inv_cnt
                     ");
                     $usageStmt->execute([$club['id'], $club['id'], $club['id']]);
