@@ -427,8 +427,8 @@ try { switch ($action) {
             VALUES (?,?,?,?, ?,?, ?,?,?)
         ")->execute([
             $clubId,
-            htmlspecialchars($category, ENT_QUOTES, 'UTF-8') ?: null,
-            htmlspecialchars($description, ENT_QUOTES, 'UTF-8'),
+            htmlspecialchars($category, ENT_NOQUOTES, 'UTF-8') ?: null,
+            htmlspecialchars($description, ENT_NOQUOTES, 'UTF-8'),
             $amount, $date,
             trim($input['payment_method'] ?? 'cash'),
             $sess['user_id'], $sess['full_name'] ?? null,
@@ -481,7 +481,7 @@ try { switch ($action) {
             WHERE id = ? AND club_id = ?
         ")->execute([
             trim($input['category'] ?? '') ?: null,
-            htmlspecialchars($description, ENT_QUOTES, 'UTF-8'),
+            htmlspecialchars($description, ENT_NOQUOTES, 'UTF-8'),
             $amount, $date,
             trim($input['payment_method'] ?? 'cash'),
             trim($input['notes'] ?? '') ?: null,

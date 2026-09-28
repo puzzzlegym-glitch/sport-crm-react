@@ -304,7 +304,7 @@ try {
             ");
             $stmt->execute([
                 $clubId,
-                htmlspecialchars($name, ENT_QUOTES, 'UTF-8'),
+                htmlspecialchars($name, ENT_NOQUOTES, 'UTF-8'),
                 $phone ?: null,
                 Recalc::normalizePhone($phone),
                 $email ?: null,
@@ -400,7 +400,7 @@ try {
 
                 $insertStmt->execute([
                     $clubId,
-                    htmlspecialchars($name, ENT_QUOTES, 'UTF-8'),
+                    htmlspecialchars($name, ENT_NOQUOTES, 'UTF-8'),
                     $phone ?: null,
                     $email ?: null,
                     preg_match('/^\d{4}-\d{2}-\d{2}$/', $row['birthday'] ?? '') ? $row['birthday'] : null,
@@ -498,7 +498,7 @@ try {
                 WHERE id = ? AND club_id = ?
             ");
             $stmt->execute([
-                htmlspecialchars($name, ENT_QUOTES, 'UTF-8'),
+                htmlspecialchars($name, ENT_NOQUOTES, 'UTF-8'),
                 $phone ?: null,
                 Recalc::normalizePhone($phone),
                 $email ?: null,

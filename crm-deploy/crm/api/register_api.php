@@ -84,7 +84,7 @@ try { switch ($action) {
                     (email, password_hash, full_name, global_role_id, is_active)
                 VALUES (?, ?, ?, NULL, 1)
             ")->execute([$email, $pwdHash,
-                htmlspecialchars($ownerName, ENT_QUOTES, 'UTF-8')]);
+                htmlspecialchars($ownerName, ENT_NOQUOTES, 'UTF-8')]);
             $ownerId = (int)$pdo->lastInsertId();
 
             // 2. Клуб
@@ -95,9 +95,9 @@ try { switch ($action) {
                 VALUES (?, ?, ?, ?, 1, 'trial', ?)
             ")->execute([
                 $ownerId,
-                htmlspecialchars($clubName, ENT_QUOTES, 'UTF-8'),
+                htmlspecialchars($clubName, ENT_NOQUOTES, 'UTF-8'),
                 $slug,
-                htmlspecialchars($clubCity, ENT_QUOTES, 'UTF-8') ?: null,
+                htmlspecialchars($clubCity, ENT_NOQUOTES, 'UTF-8') ?: null,
                 $trialEnds,
             ]);
             $clubId = (int)$pdo->lastInsertId();
@@ -142,12 +142,14 @@ try { switch ($action) {
         // Email підтвердження (власнику)
         try {
             $verifyUrl = rtrim(APP_URL, '/') . '/api/register_api.php?action=verify_email&token=' . $verifyToken;
-            Mailer::sendTemplate('verify_email', [
+            $sent = Mailer::sendTemplate('verify_email', [
                 'owner_name' => $ownerName,
                 'club_name'  => $clubName,
                 'verify_url' => $verifyUrl,
                 'trial_ends' => $trialEndsFormatted,
             ], $email, $ownerName);
+            // SMTP впав, а резервний mail() повернув false без винятку — лист не пішов.
+            if (!$sent) throw new RuntimeException('Mailer returned false');
         } catch (Throwable $e) {
             // Якщо пошта не налаштована — активуємо одразу (не блокуємо)
             error_log('[Register] Verify email failed: ' . $e->getMessage());
@@ -185,6 +187,64 @@ try { switch ($action) {
             'trial_ends' => $trialEndsFormatted,
             'redirect'   => '/login',
         ], 'Реєстрацію завершено! Перевірте пошту.');
+
+
+    // ── ПОВТОРНИЙ ЛИСТ ПІДТВЕРДЖЕННЯ ─────────────────────────────
+    case 'resend_verification':
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') Response::error('Метод не підтримується', 405);
+
+        $email = strtolower(trim($input['email'] ?? ''));
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) Response::error('Введіть коректний email');
+
+        // Відповідь однакова незалежно від того, чи є такий акаунт — щоб не дати
+        // перевіряти список зареєстрованих пошт.
+        $okMessage = 'Якщо акаунт очікує підтвердження — ми надіслали новий лист. Перевірте також папку «Спам».';
+
+        $stmt = $pdo->prepare("
+            SELECT id, full_name, email_verify_token_expires FROM sys_users
+            WHERE email = ? AND is_active = 0
+              AND email_verify_token IS NOT NULL AND email_verified_at IS NULL
+            LIMIT 1
+        ");
+        $stmt->execute([$email]);
+        $user = $stmt->fetch();
+        if (!$user) Response::ok([], $okMessage);
+
+        // Не частіше разу на 5 хв (термін токена — 48 год, тож
+        // "видано < 5 хв тому" ⇔ expires > now + 48 год − 5 хв).
+        if ($user['email_verify_token_expires']
+            && strtotime($user['email_verify_token_expires']) > time() + 172800 - 300) {
+            Response::ok([], $okMessage);
+        }
+
+        $verifyToken  = bin2hex(random_bytes(32));
+        $tokenExpires = date('Y-m-d H:i:s', time() + 172800);
+        $pdo->prepare("UPDATE sys_users SET email_verify_token=?, email_verify_token_expires=? WHERE id=?")
+            ->execute([$verifyToken, $tokenExpires, $user['id']]);
+
+        $clubStmt = $pdo->prepare("SELECT name, trial_ends_at FROM sys_clubs WHERE owner_id=? ORDER BY id LIMIT 1");
+        $clubStmt->execute([$user['id']]);
+        $clubRow = $clubStmt->fetch() ?: [];
+
+        $sent = false;
+        try {
+            $sent = Mailer::sendTemplate('verify_email', [
+                'owner_name' => $user['full_name'],
+                'club_name'  => $clubRow['name'] ?? '',
+                'verify_url' => rtrim(APP_URL, '/') . '/api/register_api.php?action=verify_email&token=' . $verifyToken,
+                'trial_ends' => !empty($clubRow['trial_ends_at']) ? date('d.m.Y', strtotime($clubRow['trial_ends_at'])) : '—',
+            ], $email, $user['full_name']);
+        } catch (Throwable $e) {
+            error_log('[Register] Resend verify email failed: ' . $e->getMessage());
+        }
+
+        if (!$sent) {
+            // Пошта не працює — не лишаємо людину без доступу (як і при реєстрації).
+            $pdo->prepare("UPDATE sys_users SET is_active=1 WHERE id=?")->execute([$user['id']]);
+            Response::ok(['activated' => true], 'Не вдалося надіслати лист, тому акаунт активовано. Можете входити.');
+        }
+
+        Response::ok([], $okMessage);
 
 
     // ── ПІДТВЕРДЖЕННЯ EMAIL ────────────────────────────────────
@@ -254,7 +314,7 @@ function self_makeSlug(string $name, PDO $pdo): string
         'т'=>'t','у'=>'u','ф'=>'f','х'=>'kh','ц'=>'ts','ч'=>'ch','ш'=>'sh',
         'щ'=>'shch','ь'=>'','ю'=>'yu','я'=>'ya',
     ];
-    $slug = strtolower(strtr($name, $map));
+    $slug = strtolower(strtr(mb_strtolower($name, 'UTF-8'), $map));
     $slug = preg_replace('/[^a-z0-9]+/', '-', $slug);
     $slug = trim($slug, '-') ?: 'club';
 

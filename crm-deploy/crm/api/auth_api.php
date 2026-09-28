@@ -378,7 +378,10 @@ try { switch ($action) {
         Response::error("Невідома дія: {$action}", 400);
 
 }} catch (RuntimeException $e) {
-    Response::error($e->getMessage(), 401);
+    // Помилки входу (невірний пароль, блокування, непідтверджений email) — НЕ 401:
+    // на 401 фронтенд (api/client.js) перезавантажує /login і текст помилки губиться.
+    $extra = $e->getCode() === Auth::ERR_EMAIL_NOT_VERIFIED ? ['reason' => 'email_not_verified'] : [];
+    Response::error($e->getMessage(), 400, $extra);
 } catch (PDOException $e) {
     Response::serverError('DB: ' . $e->getMessage());
 } catch (Throwable $e) {

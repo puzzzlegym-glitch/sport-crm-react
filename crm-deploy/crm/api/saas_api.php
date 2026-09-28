@@ -81,12 +81,12 @@ try { switch ($action) {
             : null;
 
         $discountPercent    = max(0, min(100, (int)($input['discount_percent'] ?? 0)));
-        $discountLabel      = htmlspecialchars(trim($input['discount_label'] ?? ''), ENT_QUOTES, 'UTF-8') ?: null;
+        $discountLabel      = htmlspecialchars(trim($input['discount_label'] ?? ''), ENT_NOQUOTES, 'UTF-8') ?: null;
         $discountValidUntil = trim($input['discount_valid_until'] ?? '') ?: null;
         if (!$discountPercent) { $discountLabel = null; $discountValidUntil = null; }
 
         if (!$id) {
-            $name = htmlspecialchars(trim($input['name'] ?? ''), ENT_QUOTES, 'UTF-8');
+            $name = htmlspecialchars(trim($input['name'] ?? ''), ENT_NOQUOTES, 'UTF-8');
             if (!$name) Response::error('Введіть назву плану');
 
             $isFree = (int)(bool)($input['is_free'] ?? 0);
@@ -139,7 +139,7 @@ try { switch ($action) {
                 allowed_pages        = ?
             WHERE id = ?
         ")->execute([
-            htmlspecialchars(trim($input['name'] ?? ''), ENT_QUOTES, 'UTF-8'),
+            htmlspecialchars(trim($input['name'] ?? ''), ENT_NOQUOTES, 'UTF-8'),
             (float)($input['price_monthly'] ?? 0),
             $discountPercent,
             $discountLabel,
@@ -313,7 +313,7 @@ try { switch ($action) {
 
         $periodStart = trim($input['period_start'] ?? '') ?: null;
         $periodEnd   = trim($input['period_end'] ?? '') ?: null;
-        $notes       = htmlspecialchars(trim($input['notes'] ?? ''), ENT_QUOTES, 'UTF-8') ?: null;
+        $notes       = htmlspecialchars(trim($input['notes'] ?? ''), ENT_NOQUOTES, 'UTF-8') ?: null;
 
         $current = $pdo->prepare("SELECT status, paid_at FROM saas_invoices WHERE id = ?");
         $current->execute([$id]);
@@ -388,7 +388,7 @@ try { switch ($action) {
         $planId = ($input['plan_id'] !== '' && $input['plan_id'] !== null) ? (int)$input['plan_id'] : null;
         $validUntil = trim($input['valid_until'] ?? '') ?: null;
         $isActive = (int)(bool)($input['is_active'] ?? 1);
-        $notes = htmlspecialchars(trim($input['notes'] ?? ''), ENT_QUOTES, 'UTF-8') ?: null;
+        $notes = htmlspecialchars(trim($input['notes'] ?? ''), ENT_NOQUOTES, 'UTF-8') ?: null;
 
         $dup = $pdo->prepare("SELECT id FROM saas_promo_codes WHERE code = ? AND id != ?");
         $dup->execute([$code, $id]);
@@ -493,7 +493,7 @@ try { switch ($action) {
                    ? $input['gateway'] : 'manual';
         $status  = in_array($input['status'] ?? '', ['success','pending','failed','refunded'])
                    ? $input['status'] : 'success';
-        $note    = htmlspecialchars(trim($input['note'] ?? ''), ENT_QUOTES, 'UTF-8');
+        $note    = htmlspecialchars(trim($input['note'] ?? ''), ENT_NOQUOTES, 'UTF-8');
 
         if (!$id)      Response::error('ID not specified');
         if ($amount < 0) Response::error('Amount cannot be negative');

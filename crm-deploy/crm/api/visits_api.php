@@ -226,6 +226,22 @@ try { switch ($action) {
 
         $visitDate = trim($input['visit_date'] ?? '');
         $visitDate = ($visitDate && $visitDate <= date('Y-m-d')) ? $visitDate . ' 12:00:00' : null;
+
+        // Захист від подвійного кліку (як у 'scan'): відмітка "зараз" того ж клієнта
+        // протягом 5 хв не списує ще одне заняття. Внесення минулих дат не обмежуємо.
+        if (!$visitDate) {
+            $recentStmt = $pdo->prepare("
+                SELECT id FROM visits
+                WHERE client_id = ? AND club_id = ?
+                  AND visited_at > DATE_SUB(NOW(), INTERVAL 5 MINUTE)
+                LIMIT 1
+            ");
+            $recentStmt->execute([$clientId, $clubId]);
+            $recentId = $recentStmt->fetchColumn();
+            if ($recentId) {
+                Response::ok(['visit_id' => (int)$recentId, 'already_checked_in' => true], 'Вже відмічено менше 5 хвилин тому');
+            }
+        }
         $visitId = Attendance::recordVisit(
             $pdo, $clubId, $clientId,
             $invoiceId, $trainerId, $trainerName,

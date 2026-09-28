@@ -243,7 +243,8 @@ export default function VisitsPage() {
     setManualModal({ ...manualModal, submitting: true, error: '' });
     const res = await checkIn({ client_id: manualModal.clientId, notes: manualModal.notes.trim(), trainer_id: manualModal.trainerId || 0 });
     if (res.success) {
-      toast('Відвідування відмічено', 'success');
+      if (res.already_checked_in) toast(res.message || 'Вже відмічено менше 5 хвилин тому', 'warning');
+      else toast('Відвідування відмічено', 'success');
       setManualModal(null);
       reloadStats();
       reloadJournal();

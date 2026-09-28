@@ -123,7 +123,7 @@ try { switch ($action) {
             INSERT INTO club_expenses
               (club_id,category,description,amount,expense_date,payment_method,shift_id,admin_id,admin_name)
             VALUES (?,?,?,?, CURDATE(), 'cash', ?,?,?)
-        ")->execute([$clubId,$cat,$desc,$amount,$shift['id']??null,$userId,$sess['name']??'Адмін']);
+        ")->execute([$clubId,$cat,$desc,$amount,$shift['id']??null,$userId,$sess['full_name']??'Адмін']);
         Recalc::cashflowSyncExpense($pdo, (int)$pdo->lastInsertId());
         Response::ok([], 'Витрату записано');
 
@@ -137,7 +137,7 @@ try { switch ($action) {
         if ($amount <= 0) Response::error('Сума має бути більше 0');
         $balance = CashShiftService::balance($pdo, $clubId, 'register');
         if ($amount > $balance) Response::error("В касі лише {$balance} грн. Неможливо вилучити {$amount} грн.");
-        $name = $sess['name'] ?? 'Адмін';
+        $name = $sess['full_name'] ?? 'Адмін';
         $pdo->beginTransaction();
         try {
             $pdo->prepare("
@@ -172,7 +172,7 @@ try { switch ($action) {
         if ($amount <= 0) Response::error('Сума має бути більше 0');
         $safeBalance = CashShiftService::balance($pdo, $clubId, 'safe');
         if ($amount > $safeBalance) Response::error("В сейфі лише {$safeBalance} грн. Неможливо забрати {$amount} грн.");
-        $name = $sess['name'] ?? 'Адмін';
+        $name = $sess['full_name'] ?? 'Адмін';
         $pdo->beginTransaction();
         try {
             $pdo->prepare("
@@ -207,7 +207,7 @@ try { switch ($action) {
             INSERT INTO club_cashflow
               (club_id,type,category,description,amount,payment_method,source,shift_id,location,admin_id,admin_name)
             VALUES (?,'adjustment','Коригування',?,?,'cash','adjustment',?,?,?,?)
-        ")->execute([$clubId,$desc,$amount,$shiftId,$location,$userId,$sess['name']??'Адмін']);
+        ")->execute([$clubId,$desc,$amount,$shiftId,$location,$userId,$sess['full_name']??'Адмін']);
         Response::ok([], 'Баланс скориговано');
 
 
@@ -253,7 +253,7 @@ try { switch ($action) {
         $existing = CashShiftService::getOpenShift($pdo, $clubId);
         if ($existing) Response::error("Зміна вже відкрита адміністратором «{$existing['opened_name']}» о {$existing['opened_at']}. Спочатку закрийте поточну зміну.");
         $balance = CashShiftService::balance($pdo, $clubId, 'register');
-        $name    = $sess['full_name'] ?? $sess['name'] ?? 'Адмін';
+        $name    = $sess['full_name'] ?? 'Адмін';
         try {
             $pdo->prepare("INSERT INTO cash_shifts (club_id,opened_by,opened_name,balance_open,notes) VALUES (?,?,?,?,?)")
                 ->execute([$clubId, $userId, $name, $balance, trim($input['notes']??'')?:null]);
@@ -280,7 +280,7 @@ try { switch ($action) {
         if (!$shift) Response::error('Активну зміну не знайдено');
         if (!$isOwner && (int)$shift['opened_by'] !== $userId)
             Response::error('Ви можете закрити лише свою зміну. Зверніться до власника клубу.', 403);
-        $name         = $sess['full_name'] ?? $sess['name'] ?? 'Адмін';
+        $name         = $sess['full_name'] ?? 'Адмін';
         $balanceClose = CashShiftService::close($pdo, $shift, $userId, $name, 'manual', trim($input['notes']??'')?:null);
         $totals = $pdo->prepare("
             SELECT COALESCE(SUM(CASE WHEN type IN('income','transfer_in') THEN amount ELSE 0 END),0) AS inc,

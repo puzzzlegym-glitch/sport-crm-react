@@ -202,7 +202,7 @@ try { switch ($action) {
                 email   = ?
             WHERE id = ?
         ")->execute([
-            htmlspecialchars($name, ENT_QUOTES, 'UTF-8'),
+            htmlspecialchars($name, ENT_NOQUOTES, 'UTF-8'),
             trim($input['city']    ?? '') ?: null,
             trim($input['address'] ?? '') ?: null,
             trim($input['phone']   ?? '') ?: null,

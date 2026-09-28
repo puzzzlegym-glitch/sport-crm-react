@@ -99,7 +99,7 @@ try { switch ($action) {
                 cash_shift_auto_close_time    = ?
             WHERE id = ?
         ")->execute([
-            htmlspecialchars($name, ENT_QUOTES, 'UTF-8'),
+            htmlspecialchars($name, ENT_NOQUOTES, 'UTF-8'),
             trim($input['city']     ?? '') ?: null,
             trim($input['address']  ?? '') ?: null,
             trim($input['phone']    ?? '') ?: null,
@@ -155,7 +155,7 @@ try { switch ($action) {
         $pdo->prepare("
             UPDATE sys_users SET full_name = ?, phone = ? WHERE id = ?
         ")->execute([
-            htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8'),
+            htmlspecialchars($fullName, ENT_NOQUOTES, 'UTF-8'),
             $phone ?: null,
             $sess['user_id'],
         ]);
@@ -175,7 +175,7 @@ try { switch ($action) {
         $nameUa = trim($input['name_ua'] ?? '');
         if (!$id || !$nameUa) Response::error('Вкажіть id і name_ua');
         $pdo->prepare("UPDATE sys_roles SET name_ua=? WHERE id=?")
-            ->execute([htmlspecialchars($nameUa, ENT_QUOTES, 'UTF-8'), $id]);
+            ->execute([htmlspecialchars($nameUa, ENT_NOQUOTES, 'UTF-8'), $id]);
         Response::ok([], 'Збережено');
 
 
@@ -259,7 +259,7 @@ try { switch ($action) {
                 is_active      = ?
             WHERE id = ?
         ")->execute([
-            htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8'),
+            htmlspecialchars($fullName, ENT_NOQUOTES, 'UTF-8'),
             trim($input['phone'] ?? '') ?: null,
             ($input['global_role_id'] !== '' && $input['global_role_id'] !== null)
                 ? (int)$input['global_role_id'] : null,
@@ -294,7 +294,7 @@ try { switch ($action) {
         ")->execute([
             $email,
             $pwdHash,
-            htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8'),
+            htmlspecialchars($fullName, ENT_NOQUOTES, 'UTF-8'),
             trim($input['phone'] ?? '') ?: null,
             ($input['global_role_id'] !== '' && $input['global_role_id'] !== null)
                 ? (int)$input['global_role_id'] : null,

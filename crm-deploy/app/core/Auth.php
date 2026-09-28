@@ -12,6 +12,9 @@
 
 class Auth
 {
+    /** Код RuntimeException з login(): акаунт чекає підтвердження email */
+    public const ERR_EMAIL_NOT_VERIFIED = 1001;
+
     // ── ПЕРЕВІРКА СЕСІЇ ─────────────────────────────────────
 
     public static function requireAuth(): array
@@ -240,7 +243,8 @@ class Auth
         }
 
         $stmt = $pdo->prepare("
-            SELECT id, email, password_hash, full_name, global_role_id, is_active
+            SELECT id, email, password_hash, full_name, global_role_id, is_active,
+                   email_verify_token, email_verified_at
             FROM sys_users WHERE email = ? LIMIT 1
         ");
         $stmt->execute([strtolower(trim($email))]);
@@ -249,6 +253,16 @@ class Auth
         if (!$user || !password_verify($password, $user['password_hash'])) {
             self::logAttempt($email, $ip, false, 'wrong_password');
             throw new RuntimeException('Невірний email або пароль');
+        }
+
+        if (!$user['is_active'] && $user['email_verify_token'] && !$user['email_verified_at']) {
+            // Не заблокований, а ще не підтвердив email після реєстрації —
+            // окремий код, щоб фронтенд показав кнопку "Надіслати лист ще раз".
+            self::logAttempt($email, $ip, false, 'email_not_verified');
+            throw new RuntimeException(
+                'Email ще не підтверджено. Перевірте пошту (і папку «Спам») або надішліть лист ще раз.',
+                self::ERR_EMAIL_NOT_VERIFIED
+            );
         }
 
         if (!$user['is_active']) {

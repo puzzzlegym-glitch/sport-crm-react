@@ -178,7 +178,7 @@ try { switch ($action) {
                 ")->execute([
                     $email,
                     password_hash($tmpPwd, PASSWORD_BCRYPT, ['cost' => 12]),
-                    htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8'),
+                    htmlspecialchars($fullName, ENT_NOQUOTES, 'UTF-8'),
                 ]);
                 $userId = (int)$pdo->lastInsertId();
                 $isNew  = true;
@@ -385,7 +385,7 @@ try { switch ($action) {
         $pdo->prepare("
             UPDATE sys_users SET full_name = ?, phone = ? WHERE id = ?
         ")->execute([
-            htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8'),
+            htmlspecialchars($fullName, ENT_NOQUOTES, 'UTF-8'),
             $phone ?: null,
             $sess['user_id'],
         ]);

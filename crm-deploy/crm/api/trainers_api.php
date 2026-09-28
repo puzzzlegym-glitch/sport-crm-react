@@ -162,7 +162,7 @@ case 'save':
                 ")->execute([
                     $ghostEmail,
                     password_hash(bin2hex(random_bytes(32)), PASSWORD_BCRYPT, ['cost' => 12]),
-                    htmlspecialchars($ghostName, ENT_QUOTES, 'UTF-8'),
+                    htmlspecialchars($ghostName, ENT_NOQUOTES, 'UTF-8'),
                     trim($input['phone'] ?? '') ?: null,
                 ]);
                 $ghostUserId = (int)$pdo->lastInsertId();

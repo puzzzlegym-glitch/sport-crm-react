@@ -155,7 +155,7 @@ try {
                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
             ")->execute([
                 $clubId,
-                htmlspecialchars($name, ENT_QUOTES, 'UTF-8'),
+                htmlspecialchars($name, ENT_NOQUOTES, 'UTF-8'),
                 trim($input['category'] ?? '') ?: null,
                 trim($input['supplier'] ?? '') ?: null,
                 trim($input['barcode'] ?? '') ?: null,
@@ -191,7 +191,7 @@ try {
                     photo_url = ?, description = ?
                 WHERE id = ? AND club_id = ?
             ")->execute([
-                htmlspecialchars($name, ENT_QUOTES, 'UTF-8'),
+                htmlspecialchars($name, ENT_NOQUOTES, 'UTF-8'),
                 trim($input['category'] ?? '') ?: null,
                 trim($input['supplier'] ?? '') ?: null,
                 trim($input['barcode'] ?? '') ?: null,

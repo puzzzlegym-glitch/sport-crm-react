@@ -282,7 +282,8 @@ export default function ClientCardPage() {
       toast(res.error, 'error');
       return;
     }
-    toast('Відвідування записано', 'success');
+    if (res.already_checked_in) toast(res.message || 'Вже відмічено менше 5 хвилин тому', 'warning');
+    else toast('Відвідування записано', 'success');
     setCheckin(null);
     load();
   }

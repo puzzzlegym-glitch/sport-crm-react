@@ -62,7 +62,7 @@ try {
                 VALUES (?,?,?,?,?,?)
             ")->execute([
                 $clubId,
-                htmlspecialchars($name, ENT_QUOTES, 'UTF-8'),
+                htmlspecialchars($name, ENT_NOQUOTES, 'UTF-8'),
                 trim($input['category'] ?? '') ?: null,
                 trim($input['location_note'] ?? '') ?: null,
                 $status,
@@ -94,7 +94,7 @@ try {
                     name = ?, category = ?, location_note = ?, status = ?, notes = ?
                 WHERE id = ? AND club_id = ?
             ")->execute([
-                htmlspecialchars($name, ENT_QUOTES, 'UTF-8'),
+                htmlspecialchars($name, ENT_NOQUOTES, 'UTF-8'),
                 trim($input['category'] ?? '') ?: null,
                 trim($input['location_note'] ?? '') ?: null,
                 $status,

@@ -12,6 +12,9 @@
 .btn-login:disabled{opacity:.7;cursor:not-allowed}
 .error-box{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);border-radius:var(--radius-sm);padding:10px 14px;font-size:13px;color:var(--danger);margin-bottom:16px;display:none}
 .error-box.show{display:block}
+.info-box{background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.3);border-radius:var(--radius-sm);padding:10px 14px;font-size:13px;color:var(--success);margin-bottom:16px}
+.btn-resend{width:100%;margin:-6px 0 16px;padding:10px 14px;border-radius:var(--radius-sm);border:1px solid var(--border);background:transparent;color:var(--text-primary);font-size:13px;cursor:pointer}
+.btn-resend:disabled{opacity:.6;cursor:default}
 .input-wrap{position:relative}
 .input-wrap input{padding-right:40px}
 .toggle-pwd{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-muted);cursor:pointer;padding:4px;font-size:15px}

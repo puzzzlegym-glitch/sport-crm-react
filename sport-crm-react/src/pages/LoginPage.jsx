@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams, Navigate, Link } from 'react-router-dom';
 import { login } from '../api/auth';
+import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import Icon from '../components/ui/Icon';
 import './LoginPage.css';
@@ -24,6 +25,15 @@ export default function LoginPage() {
   const [showPwd, setShowPwd] = useState(false);
   const [error, setError]     = useState('');
   const [loading, setLoading] = useState(false);
+  // Акаунт чекає підтвердження email → показуємо кнопку повторного листа
+  const [needsVerify, setNeedsVerify] = useState(false);
+  const [info, setInfo]       = useState(() => {
+    const v = searchParams.get('verified');
+    if (v === '1') return 'Email підтверджено! Тепер можете увійти.';
+    if (v === 'already') return 'Посилання вже використано або воно застаріло. Спробуйте увійти.';
+    return '';
+  });
+  const [resending, setResending] = useState(false);
 
   // Якщо людина вже залогінена — одразу перекидаємо на дашборд,
   // форму логіну навіть не показуємо
@@ -35,6 +45,8 @@ export default function LoginPage() {
     e.preventDefault(); // не даємо сторінці перезавантажитись при сабміті форми
 
     setError('');
+    setInfo('');
+    setNeedsVerify(false);
 
     if (!email.trim() || !password) {
       setError('Заповніть всі поля');
@@ -50,8 +62,19 @@ export default function LoginPage() {
       navigate(res.redirect || '/dashboard');
     } else {
       setError(res.error || 'Помилка входу');
+      setNeedsVerify(res.reason === 'email_not_verified');
       setLoading(false);
     }
+  }
+
+  async function handleResend() {
+    setResending(true);
+    const res = await api('resend_verification', { email: email.trim() }, 'register');
+    setResending(false);
+    if (!res.success) { setError(res.error || 'Не вдалося надіслати лист'); return; }
+    setError('');
+    setNeedsVerify(false);
+    setInfo(res.message);
   }
 
   function handleTryDemo() {
@@ -71,7 +94,13 @@ export default function LoginPage() {
           <h1>Вхід до системи</h1>
           <p className="subtitle">Введіть ваші облікові дані</p>
 
+          {info && <div className="info-box">{info}</div>}
           {error && <div className="error-box show">{error}</div>}
+          {needsVerify && (
+            <button type="button" className="btn-resend" disabled={resending} onClick={handleResend}>
+              {resending ? 'Надсилаємо...' : '✉️ Надіслати лист ще раз'}
+            </button>
+          )}
 
           <form onSubmit={handleSubmit}>
             <div className="form-group">
