@@ -3,7 +3,17 @@
  * Той самий контракт з backend, credentials: 'include'
  */
 
-import { isDemoActive, demoApi } from '../demo';
+import { isDemoActive, demoApi, stopDemo } from '../demo';
+
+/**
+ * Дії, які завжди йдуть на справжній сервер: вхід, відновлення пароля, реєстрація.
+ * Якщо у вкладці лишився прапорець демо (людина пробувала демо, потім відкрила /login),
+ * без цього вхід "потрапляв" у демо й отримував "Цей розділ недоступний у демо-версії".
+ */
+function isRealOnlyAction(action, apiType) {
+  if (apiType === 'register') return true;
+  return apiType === 'auth' && ['login', 'forgot_password', 'reset_password'].includes(action);
+}
 
 const API = {
   auth:      '/api/auth_api.php',
@@ -45,7 +55,10 @@ const isDev = ['localhost', '127.0.0.1'].includes(window.location.hostname);
  * @param {keyof API} apiType
  */
 export async function api(action, body = {}, apiType = 'auth') {
-  if (isDemoActive()) return demoApi(action, body, apiType);
+  if (isDemoActive()) {
+    if (!isRealOnlyAction(action, apiType)) return demoApi(action, body, apiType);
+    stopDemo(); // виходимо з демо — далі всі запити (у т.ч. check після входу) йдуть на сервер
+  }
 
   const baseUrl = API[apiType] ?? API.auth;
 

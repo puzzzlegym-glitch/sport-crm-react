@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { api } from './client';
+import { startDemo, stopDemo, isDemoActive } from '../demo';
 
 function mockFetchOnce({ status = 200, text = '{}' }) {
   global.fetch = vi.fn().mockResolvedValue({
@@ -68,5 +69,34 @@ describe('api()', () => {
     global.fetch = vi.fn().mockRejectedValue(new Error('Failed to fetch'));
     const res = await api('check', {}, 'auth');
     expect(res).toEqual({ success: false, error: 'Немає підключення до сервера' });
+  });
+});
+
+describe('api() у демо-режимі', () => {
+  beforeEach(() => startDemo());
+  afterEach(() => {
+    stopDemo();
+    vi.restoreAllMocks();
+  });
+
+  it('login іде на справжній сервер і вимикає демо', async () => {
+    mockFetchOnce({ text: '{"success":true}' });
+    const res = await api('login', { email: 'a@b.ua', password: 'x' }, 'auth');
+    expect(res).toEqual({ success: true });
+    expect(global.fetch).toHaveBeenCalledWith('/api/auth_api.php?action=login', expect.anything());
+    expect(isDemoActive()).toBe(false);
+  });
+
+  it('реєстрація теж іде на справжній сервер', async () => {
+    mockFetchOnce({ text: '{"success":true}' });
+    await api('check_email', { email: 'a@b.ua' }, 'register');
+    expect(global.fetch).toHaveBeenCalledWith('/api/register_api.php?action=check_email', expect.anything());
+  });
+
+  it('звичайні дії в демо не звертаються до сервера', async () => {
+    global.fetch = vi.fn();
+    await api('get_list', {}, 'clients');
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(isDemoActive()).toBe(true);
   });
 });

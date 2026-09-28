@@ -22,6 +22,9 @@ define('SESSION_LIFETIME', 86400);
 define('SESSION_COOKIE',   'sc_sess');
 define('MAX_LOGIN_FAILS',  5);
 define('LOGIN_BLOCK_SECS', 900);
+// Лише якщо сайт працює через Cloudflare/проксі — інакше залишити закоментованим
+// (заголовок з IP може підробити будь-хто):
+// define('TRUSTED_PROXY_IP_HEADER', 'HTTP_CF_CONNECTING_IP');
 
 // ── Домен ─────────────────────────────────────────────────
 define('APP_URL',       'https://ваш-домен.ua/');

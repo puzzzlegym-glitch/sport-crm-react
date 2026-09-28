@@ -15,6 +15,9 @@ class Auth
     /** Код RuntimeException з login(): акаунт чекає підтвердження email */
     public const ERR_EMAIL_NOT_VERIFIED = 1001;
 
+    /** Невірних паролів на один акаунт за LOGIN_BLOCK_SECS (з будь-яких IP) до блокування */
+    private const MAX_ACCOUNT_FAILS = 10;
+
     // ── ПЕРЕВІРКА СЕСІЇ ─────────────────────────────────────
 
     public static function requireAuth(): array
@@ -242,6 +245,20 @@ class Auth
             throw new RuntimeException('Забагато спроб входу. Спробуйте через 15 хвилин.');
         }
 
+        // Ліміт на акаунт — незалежно від IP: підбір пароля з багатьох адрес
+        // (ботнет, проксі) теж зупиняється. Рахуємо лише невірні паролі, щоб
+        // блокування не продовжувалось від самих заблокованих спроб.
+        $stmt = $pdo->prepare("
+            SELECT COUNT(*) FROM sys_login_log
+            WHERE email = ? AND success = 0 AND fail_reason = 'wrong_password'
+              AND created_at > DATE_SUB(NOW(), INTERVAL ? SECOND)
+        ");
+        $stmt->execute([strtolower(trim($email)), LOGIN_BLOCK_SECS]);
+        if ((int)$stmt->fetchColumn() >= self::MAX_ACCOUNT_FAILS) {
+            self::logAttempt($email, $ip, false, 'account_blocked');
+            throw new RuntimeException('Забагато невдалих спроб входу в цей акаунт. Спробуйте через 15 хвилин або відновіть пароль.');
+        }
+
         $stmt = $pdo->prepare("
             SELECT id, email, password_hash, full_name, global_role_id, is_active,
                    email_verify_token, email_verified_at
@@ -345,7 +362,7 @@ class Auth
             Database::get()->prepare("
                 INSERT INTO sys_login_log (email, ip_address, success, fail_reason)
                 VALUES (?, ?, ?, ?)
-            ")->execute([$email, $ip, $success ? 1 : 0, $reason]);
+            ")->execute([strtolower(trim($email)), $ip, $success ? 1 : 0, $reason]);
         } catch (Throwable) {}
     }
 
@@ -361,11 +378,18 @@ class Auth
         ]);
     }
 
-    private static function getIp(): string
+    /**
+     * IP клієнта для лімітів (вхід, реєстрація). Лише REMOTE_ADDR — його не
+     * підробити. Заголовки CF-Connecting-IP / X-Forwarded-For надсилає будь-хто,
+     * тож їм довіряємо ТІЛЬКИ якщо в config.php явно задано
+     * TRUSTED_PROXY_IP_HEADER (напр. 'HTTP_CF_CONNECTING_IP', коли сайт за Cloudflare).
+     */
+    public static function getIp(): string
     {
-        foreach (['HTTP_CF_CONNECTING_IP', 'HTTP_X_FORWARDED_FOR', 'REMOTE_ADDR'] as $key) {
-            if (!empty($_SERVER[$key])) return trim(explode(',', $_SERVER[$key])[0]);
+        if (defined('TRUSTED_PROXY_IP_HEADER') && TRUSTED_PROXY_IP_HEADER
+            && !empty($_SERVER[TRUSTED_PROXY_IP_HEADER])) {
+            return substr(trim(explode(',', $_SERVER[TRUSTED_PROXY_IP_HEADER])[0]), 0, 45);
         }
-        return '0.0.0.0';
+        return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
     }
 }

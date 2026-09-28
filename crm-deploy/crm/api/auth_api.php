@@ -103,7 +103,7 @@ try { switch ($action) {
 
         $pdo  = Database::get();
         $stmt = $pdo->prepare("
-            SELECT id FROM sys_users
+            SELECT id, email FROM sys_users
             WHERE password_reset_token = ? AND password_reset_token_expires > NOW()
             LIMIT 1
         ");
@@ -120,6 +120,10 @@ try { switch ($action) {
 
         // Виходимо з усіх активних сесій цього користувача — новий пароль, нові сесії
         $pdo->prepare("DELETE FROM sys_sessions WHERE user_id = ?")->execute([$user['id']]);
+        // Знімаємо блокування акаунта за невірні паролі (Auth::login, ліміт на акаунт) —
+        // власник довів доступ до пошти, тож може входити одразу.
+        $pdo->prepare("DELETE FROM sys_login_log WHERE email = ? AND fail_reason = 'wrong_password'")
+            ->execute([strtolower($user['email'])]);
 
         Response::ok([], 'Пароль змінено. Тепер увійдіть з новим паролем.');
 

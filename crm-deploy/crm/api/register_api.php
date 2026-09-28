@@ -33,11 +33,7 @@ try { switch ($action) {
     // ── РЕЄСТРАЦІЯ ──────────────────────────────────────────
     case 'register':
         // Захист від спаму: не більше 3 реєстрацій з одного IP за годину
-        $ip = $_SERVER['HTTP_CF_CONNECTING_IP']
-           ?? $_SERVER['HTTP_X_FORWARDED_FOR']
-           ?? $_SERVER['REMOTE_ADDR']
-           ?? '0.0.0.0';
-        $ip = trim(explode(',', $ip)[0]);
+        $ip = Auth::getIp();
 
         $spamCheck = $pdo->prepare("
             SELECT COUNT(*) FROM saas_registrations
