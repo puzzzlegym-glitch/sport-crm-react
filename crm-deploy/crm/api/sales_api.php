@@ -321,7 +321,10 @@ try {
             if ($clientId) {
                 $cs = $pdo->prepare("SELECT status FROM clients WHERE id=? AND club_id=? LIMIT 1");
                 $cs->execute([$clientId, $clubId]);
-                if ($cs->fetchColumn() === 'blocked') Response::error('Клієнт заблокований — продаж товару недоступний');
+                $clientStatus = $cs->fetchColumn();
+                // Клієнт з іншого клубу (або неіснуючий) — інакше можна списати чужий депозит.
+                if ($clientStatus === false) Response::error('Клієнта не знайдено', 404);
+                if ($clientStatus === 'blocked') Response::error('Клієнт заблокований — продаж товару недоступний');
             }
 
             // Зміна для готівки (як у sell_api.php)

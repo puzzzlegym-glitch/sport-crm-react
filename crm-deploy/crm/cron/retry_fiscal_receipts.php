@@ -8,7 +8,7 @@
  * нескінченно при постійній помилці (напр. невірний ключ ліцензії).
  */
 
-require_once dirname(__DIR__) . '/app/bootstrap.php';
+require_once dirname(__DIR__, 2) . '/app/bootstrap.php';
 require_once __DIR__ . '/../classes/CheckboxService.php';
 
 const MAX_ATTEMPTS = 5;

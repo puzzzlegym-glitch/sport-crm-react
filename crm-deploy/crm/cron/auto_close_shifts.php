@@ -11,7 +11,7 @@
  * Запускати раз на 5-10 хв.
  */
 
-require_once dirname(__DIR__) . '/app/bootstrap.php';
+require_once dirname(__DIR__, 2) . '/app/bootstrap.php';
 require_once __DIR__ . '/../classes/CashShiftService.php';
 
 $pdo = Database::get();

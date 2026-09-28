@@ -425,6 +425,15 @@ try {
                 Response::error('При оплаті депозитом клієнт обов\'язковий');
             }
 
+            // Клієнт має належати цьому клубу — інакше можна списати чужий депозит.
+            if ($clientId) {
+                $cs = $pdo->prepare("SELECT status FROM clients WHERE id=? AND club_id=? LIMIT 1");
+                $cs->execute([$clientId, $clubId]);
+                $clientStatus = $cs->fetchColumn();
+                if ($clientStatus === false) Response::error('Клієнта не знайдено', 404);
+                if ($clientStatus === 'blocked') Response::error('Клієнт заблокований — продаж товару недоступний');
+            }
+
             // Перевірка балансу депозиту
             if ($method === 'deposit' && $clientId) {
                 $balStmt = $pdo->prepare("SELECT balance FROM clients WHERE id = ? LIMIT 1");

@@ -59,6 +59,14 @@ class Recalc
             SET visits_used = (SELECT COUNT(*) FROM visits WHERE invoice_id = ?)
             WHERE id = ?
         ")->execute([$invoiceId, $invoiceId]);
+        // 'expired' ставить Attendance::recordVisit, коли ліміт вичерпано. Якщо після
+        // видалення відмітки заняття знову є — повертаємо 'active', інакше клієнта
+        // не пустить на вхід (scan/check_in шукають лише status='active').
+        $pdo->prepare("
+            UPDATE client_invoices SET status = 'active'
+            WHERE id = ? AND status = 'expired'
+              AND visits_total IS NOT NULL AND visits_used < visits_total
+        ")->execute([$invoiceId]);
         self::unlockInvoiceTrainerEarnings($pdo, $invoiceId);
     }
 
@@ -87,25 +95,18 @@ class Recalc
     }
 
     /**
-     * Категорія 2 (Фаза 3): активний↔скасований залежно від paid_amount vs
-     * price. Об'єднує обидва напрямки trg_payment_status_after_insert
-     * (лише cancelled→active) і trg_payment_status_after_update (обидва
-     * напрямки) в один ідемпотентний перерахунок — виклик з тим самим
-     * станом нічого не змінює, тож безпечно дублювати поки тригер активний.
-     * Викликати ПІСЛЯ invoicePaidAmount() для того ж invoiceId.
+     * Викликається після зміни оплат абонемента (ПІСЛЯ invoicePaidAmount()).
+     * Колишня логіка тригерів trg_payment_status_* (активний↔скасований за
+     * paid_amount vs price) прибрана — див. коментар у тілі.
      */
     public static function invoiceStatus(PDO $pdo, int $invoiceId): void
     {
-        $row = $pdo->prepare("SELECT paid_amount, price, status FROM client_invoices WHERE id = ?");
-        $row->execute([$invoiceId]);
-        $inv = $row->fetch();
-        if (!$inv) return;
-
-        if ((float)$inv['paid_amount'] >= (float)$inv['price'] && $inv['status'] === 'cancelled') {
-            $pdo->prepare("UPDATE client_invoices SET status = 'active' WHERE id = ?")->execute([$invoiceId]);
-        } elseif ((float)$inv['paid_amount'] < (float)$inv['price'] && $inv['status'] === 'active') {
-            $pdo->prepare("UPDATE client_invoices SET status = 'cancelled' WHERE id = ?")->execute([$invoiceId]);
-        }
+        // Статус абонемента більше НЕ залежить від суми оплати: часткова оплата
+        // (продаж з боргом) лишає абонемент активним, борг видно окремо
+        // (price - paid_amount). Раніше неповна оплата ставила 'cancelled' —
+        // клієнта не пускало на вхід, а ручне скасування власником могло
+        // "ожити" після редагування оплати. 'cancelled' тепер — лише ручна дія
+        // (invoices_api: cancel/restore).
         self::unlockInvoiceTrainerEarnings($pdo, $invoiceId);
     }
 

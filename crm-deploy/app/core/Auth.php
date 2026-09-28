@@ -279,7 +279,7 @@ class Auth
             'domain'   => COOKIE_DOMAIN,
             // Secure-кукі браузер узагалі не збереже на звичайному http (crm.test
             // локально) — тому вимикаємо лише там; на проді (https) лишається true.
-            'secure'   => !IS_LOCAL_TEST,
+            'secure'   => !(defined('IS_LOCAL_TEST') && IS_LOCAL_TEST),
             'httponly' => true,
             'samesite' => 'Lax',
         ]);
@@ -341,7 +341,7 @@ class Auth
             'expires'  => time() - 3600,
             'path'     => '/',
             'domain'   => COOKIE_DOMAIN,
-            'secure'   => !IS_LOCAL_TEST,
+            'secure'   => !(defined('IS_LOCAL_TEST') && IS_LOCAL_TEST),
             'httponly' => true,
             'samesite' => 'Lax',
         ]);

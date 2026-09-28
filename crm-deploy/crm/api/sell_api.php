@@ -37,7 +37,14 @@ if (!$productId) { http_response_code(400); echo json_encode(['success'=>false,'
 if ($clientId) {
     $cs = $pdo->prepare("SELECT status FROM clients WHERE id=? AND club_id=? LIMIT 1");
     $cs->execute([$clientId, $clubId]);
-    if ($cs->fetchColumn() === 'blocked') {
+    $clientStatus = $cs->fetchColumn();
+    if ($clientStatus === false) {
+        // Клієнт з іншого клубу (або неіснуючий) — інакше можна списати чужий депозит.
+        http_response_code(404);
+        echo json_encode(['success'=>false,'error'=>'Клієнта не знайдено']);
+        exit;
+    }
+    if ($clientStatus === 'blocked') {
         http_response_code(403);
         echo json_encode(['success'=>false,'error'=>'Клієнт заблокований — продаж товару недоступний']);
         exit;

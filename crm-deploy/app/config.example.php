@@ -34,6 +34,7 @@ define('PUBLIC_PATH', dirname(__DIR__));
 
 // ── Режим розробки ────────────────────────────────────────
 define('DEV_MODE', false); // true лише локально!
+define('IS_LOCAL_TEST', false); // true лише для локального http (вимикає Secure у кукі сесії)
 define('APP_VERSION', '1.0.1'); // змінювати при кожному деплої
 
 // ── WayForPay ─────────────────────────────────────────────
