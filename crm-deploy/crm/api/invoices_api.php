@@ -143,7 +143,7 @@ try { switch ($action) {
                 ci.id, ci.tariff_id, ci.tariff_name, ci.price, ci.paid_amount,
                 ci.start_date, ci.end_date,
                 ci.visits_total, ci.visits_used,
-                {$EFFECTIVE_STATUS_SQL} AS status, ci.sale_type, ci.freeze_days, ci.freeze_start,
+                {$EFFECTIVE_STATUS_SQL} AS status, ci.sale_type, ci.freeze_days, ci.freeze_start, ci.freeze_current_days,
                 ci.trainer_id, ci.trainer_name, ci.admin_name,
                 ci.created_at,
                 c.id   AS client_id,
@@ -480,97 +480,75 @@ try { switch ($action) {
 
 
     // ════ ЗАМОРОЗКА ═══════════════════════════════════════════
+    // Правила:
+    //  • перший день заморозки — не раніше НАСТУПНОГО дня після заявки (поточний день
+    //    уже почався й у заморозку не входить) або пізніше на вимогу клієнта;
+    //  • до першого дня абонемент активний ("запланована заморозка"), 'frozen' вмикає
+    //    Recalc::autoUnfreezeExpired у перший день і знімає після останнього;
+    //  • end_date подовжується від ПОТОЧНОЇ дати кінця: +N днів заморозки;
+    //  • freeze_days — сума всіх заморозок абонемента, freeze_current_days — поточної.
+    // Якщо абонемент уже заморожено — ця дія РОЗМОРОЖУЄ (зараховує використані дні).
     case 'freeze':
         if (!Auth::can($sess, $clubId, 'invoices.cancel')) Response::forbidden();
 
-        $id        = (int)($input['id']    ?? 0);
+        $id         = (int)($input['id']    ?? 0);
         $freezeDays = (int)($input['days'] ?? 0);
         if (!$id) Response::error('Не вказано id');
 
-        $stmt = $pdo->prepare("
-            SELECT * FROM client_invoices
-            WHERE id = ? AND club_id = ? AND status IN ('active','frozen')
-            LIMIT 1
-        ");
-        $stmt->execute([$id, $clubId]);
-        $inv = $stmt->fetch();
-        if (!$inv) Response::error('Абонемент не знайдено');
+        $inv = inv_loadFreezable($pdo, $id, $clubId);
+        $today = date('Y-m-d');
 
         if ($inv['status'] === 'frozen') {
             // ── РОЗМОРОЖУЄМО ─────────────────────────────────
-            // Рахуємо реально заморожені дні: від freeze_start до сьогодні
-            $freezeStart = $inv['freeze_start'] ?: date('Y-m-d');
-            $actualDays  = max(0, (int)((strtotime('today') - strtotime($freezeStart)) / 86400));
-            // Не більше запланованого ліміту
-            $usedFreeze  = min($actualDays, (int)$inv['freeze_days']);
-            // Невикористані заморожені дні — прибираємо з end_date
-            $unusedFreeze = (int)$inv['freeze_days'] - $usedFreeze;
-            // end_date = поточний end_date - невикористані дні заморозки
-            $newEnd = date('Y-m-d', strtotime($inv['end_date'] . " -{$unusedFreeze} days"));
+            // Використано днів — від першого дня заморозки до вчора включно; сьогодні
+            // клієнт уже активний (може тренуватись у день розморозки).
+            $current = inv_currentFreezeDays($inv);
+            $used    = max(0, min($current, (int)((strtotime($today) - strtotime($inv['freeze_start'])) / 86400)));
+            $unused  = $current - $used;
+            $newEnd  = date('Y-m-d', strtotime($inv['end_date'] . " -{$unused} days"));
             $pdo->prepare("
                 UPDATE client_invoices SET
-                    status       = 'active',
-                    freeze_days  = ?,
-                    freeze_start = NULL,
-                    end_date     = ?
+                    status = 'active', freeze_days = GREATEST(0, freeze_days - ?),
+                    freeze_start = NULL, freeze_current_days = NULL, end_date = ?
                 WHERE id = ?
-            ")->execute([$usedFreeze, $newEnd, $id]);
+            ")->execute([$unused, $newEnd, $id]);
             Recalc::unlockInvoiceTrainerEarnings($pdo, $id);
-            Response::ok(['new_end_date' => $newEnd], "Розморожено. Використано {$usedFreeze} дн. заморозки.");
+            Response::ok(['new_end_date' => $newEnd], "Розморожено. Використано {$used} дн. заморозки. Термін дії: до {$newEnd}.");
         }
 
         // ── ЗАМОРОЖУЄМО ──────────────────────────────────────
+        if ($inv['freeze_start']) {
+            Response::error('Заморозку вже заплановано з ' . $inv['freeze_start'] . '. Змініть кількість днів або відмініть її.');
+        }
         if ($freezeDays < 1) Response::error('Вкажіть кількість днів заморозки');
 
-        // Дата початку заморозки (не раніше сьогодні)
-        $freezeStartInput = trim($input['freeze_start'] ?? '');
-        $today = date('Y-m-d');
-        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $freezeStartInput) || $freezeStartInput < $today) {
-            $freezeStartInput = $today;
+        $tomorrow    = date('Y-m-d', strtotime('+1 day'));
+        $freezeStart = trim($input['freeze_start'] ?? '');
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $freezeStart)) $freezeStart = $tomorrow;
+        if ($freezeStart < $tomorrow) {
+            Response::error("Заморозка починається не раніше наступного дня після заявки — з {$tomorrow}.");
         }
-
-        // Заморозка можлива лише в межах дії абонементу: з 2-го дня і по передостанній день (включно)
-        $minFreezeStart = date('Y-m-d', strtotime($inv['start_date'] . ' +1 day'));
+        // У межах дії абонементу: не в перший день і не пізніше передостаннього.
+        $minFreezeStart = max($tomorrow, date('Y-m-d', strtotime($inv['start_date'] . ' +1 day')));
         $maxFreezeStart = date('Y-m-d', strtotime($inv['end_date'] . ' -1 day'));
-        if ($freezeStartInput < $minFreezeStart || $freezeStartInput > $maxFreezeStart) {
+        if ($freezeStart < $minFreezeStart || $freezeStart > $maxFreezeStart) {
             Response::error("Заморозка можлива лише в межах дії абонементу: з {$minFreezeStart} по {$maxFreezeStart}");
         }
 
-        // Перевіряємо ліміти заморозки з тарифу (мін./макс. днів)
-        if ($inv['tariff_id']) {
-            $tariffRow = $pdo->prepare("SELECT freeze_days_max, freeze_days_min, duration_days FROM tariffs WHERE id=? LIMIT 1");
-            $tariffRow->execute([$inv['tariff_id']]);
-            $tariff = $tariffRow->fetch();
-            $maxFreeze = (int)($tariff['freeze_days_max'] ?? 0);
-            $minFreeze = (int)($tariff['freeze_days_min'] ?? 0);
-            if ($maxFreeze > 0 && $freezeDays > $maxFreeze) {
-                Response::error("Максимум заморозки для цього тарифу: {$maxFreeze} дн.");
-            }
-            if ($minFreeze > 0 && $freezeDays < $minFreeze) {
-                Response::error("Мінімум заморозки для цього тарифу: {$minFreeze} дн.");
-            }
-        }
+        inv_checkFreezeLimits($pdo, $inv, $freezeDays, (int)$inv['freeze_days'] + $freezeDays);
 
-        // end_date = start_date + duration_days + (старі freeze_days + нові) + prolong_days
-        $newFreezeDays = (int)$inv['freeze_days'] + $freezeDays;
-        $prolongDays   = (int)($inv['prolong_days'] ?? 0);
-        $durationDays  = isset($tariff['duration_days'])
-            ? (int)$tariff['duration_days']
-            : (int)(strtotime($inv['end_date']) - strtotime($inv['start_date'])) / 86400 - (int)$inv['freeze_days'] - $prolongDays;
-        $newEnd = date('Y-m-d', strtotime($inv['start_date']
-            . " +{$durationDays} days +{$newFreezeDays} days +{$prolongDays} days"));
-
+        $newEnd = date('Y-m-d', strtotime($inv['end_date'] . " +{$freezeDays} days"));
         $pdo->prepare("
             UPDATE client_invoices SET
-                status       = 'frozen',
-                freeze_days  = ?,
-                freeze_start = ?,
-                end_date     = ?
+                freeze_days = freeze_days + ?, freeze_start = ?, freeze_current_days = ?, end_date = ?
             WHERE id = ?
-        ")->execute([$newFreezeDays, $freezeStartInput, $newEnd, $id]);
+        ")->execute([$freezeDays, $freezeStart, $freezeDays, $newEnd, $id]);
+        Recalc::autoUnfreezeExpired($pdo, $clubId);
         Recalc::unlockInvoiceTrainerEarnings($pdo, $id);
 
-        Response::ok([], "Абонемент заморожено на {$freezeDays} дн. з {$freezeStartInput}.");
+        $lastDay = date('Y-m-d', strtotime($freezeStart . ' +' . ($freezeDays - 1) . ' days'));
+        Response::ok(['new_end_date' => $newEnd],
+            "Заморозку заплановано на {$freezeDays} дн.: з {$freezeStart} по {$lastDay}. До цього клієнт може відвідувати клуб. Новий термін дії: до {$newEnd}.");
 
 
     // ════ ВІДМІНИТИ ЗАМОРОЗКУ (повне скасування, без урахування використаних днів) ════
@@ -580,17 +558,11 @@ try { switch ($action) {
         $id = (int)($input['id'] ?? 0);
         if (!$id) Response::error('Не вказано id');
 
-        $stmt = $pdo->prepare("
-            SELECT * FROM client_invoices
-            WHERE id = ? AND club_id = ? AND status = 'frozen'
-            LIMIT 1
-        ");
-        $stmt->execute([$id, $clubId]);
-        $inv = $stmt->fetch();
-        if (!$inv) Response::error('Абонемент не знайдено або не заморожений');
+        $inv = inv_loadFreezable($pdo, $id, $clubId);
+        if (!$inv['freeze_start']) Response::error('Абонемент не заморожений і заморозку не заплановано');
 
-        // Термін дії, який був би, якби заморозки не було взагалі
-        $revertedEnd = date('Y-m-d', strtotime($inv['end_date'] . " -{$inv['freeze_days']} days"));
+        $current     = inv_currentFreezeDays($inv);
+        $revertedEnd = date('Y-m-d', strtotime($inv['end_date'] . " -{$current} days"));
 
         // Не можна відміняти, якщо є відвідування, які через це опиняться поза межами терміну абонементу
         $visitStmt = $pdo->prepare("SELECT MAX(visited_at) FROM visits WHERE invoice_id = ?");
@@ -602,18 +574,16 @@ try { switch ($action) {
 
         $pdo->prepare("
             UPDATE client_invoices SET
-                status       = 'active',
-                freeze_days  = 0,
-                freeze_start = NULL,
-                end_date     = ?
+                status = 'active', freeze_days = GREATEST(0, freeze_days - ?),
+                freeze_start = NULL, freeze_current_days = NULL, end_date = ?
             WHERE id = ?
-        ")->execute([$revertedEnd, $id]);
+        ")->execute([$current, $revertedEnd, $id]);
         Recalc::unlockInvoiceTrainerEarnings($pdo, $id);
 
         Response::ok(['new_end_date' => $revertedEnd], "Заморозку відмінено. Термін абонементу: до {$revertedEnd}.");
 
 
-    // ════ ЗМІНИТИ КІЛЬКІСТЬ ДНІВ ЗАМОРОЗКИ (напр. на прохання клієнта) ═
+    // ════ ЗМІНИТИ КІЛЬКІСТЬ ДНІВ ПОТОЧНОЇ ЗАМОРОЗКИ (напр. на прохання клієнта) ═
     case 'update_freeze_days':
         if (!Auth::can($sess, $clubId, 'invoices.cancel')) Response::forbidden();
 
@@ -622,36 +592,19 @@ try { switch ($action) {
         if (!$id) Response::error('Не вказано id');
         if ($newDays < 1) Response::error('Вкажіть кількість днів заморозки');
 
-        $stmt = $pdo->prepare("
-            SELECT * FROM client_invoices
-            WHERE id = ? AND club_id = ? AND status = 'frozen'
-            LIMIT 1
-        ");
-        $stmt->execute([$id, $clubId]);
-        $inv = $stmt->fetch();
-        if (!$inv) Response::error('Абонемент не знайдено або не заморожений');
+        $inv = inv_loadFreezable($pdo, $id, $clubId);
+        if (!$inv['freeze_start']) Response::error('Абонемент не заморожений і заморозку не заплановано');
 
-        $tariff = null;
-        if ($inv['tariff_id']) {
-            $tariffRow = $pdo->prepare("SELECT freeze_days_max, freeze_days_min, duration_days FROM tariffs WHERE id=? LIMIT 1");
-            $tariffRow->execute([$inv['tariff_id']]);
-            $tariff = $tariffRow->fetch();
-            $maxFreeze = (int)($tariff['freeze_days_max'] ?? 0);
-            $minFreeze = (int)($tariff['freeze_days_min'] ?? 0);
-            if ($maxFreeze > 0 && $newDays > $maxFreeze) {
-                Response::error("Максимум заморозки для цього тарифу: {$maxFreeze} дн.");
-            }
-            if ($minFreeze > 0 && $newDays < $minFreeze) {
-                Response::error("Мінімум заморозки для цього тарифу: {$minFreeze} дн.");
-            }
+        $current = inv_currentFreezeDays($inv);
+        // Уже минулі дні заморозки не "повернути": не менше, ніж уже використано + сьогодні.
+        $usedIncl = max(0, (int)((strtotime(date('Y-m-d')) - strtotime($inv['freeze_start'])) / 86400) + 1);
+        if ($inv['status'] === 'frozen' && $newDays < $usedIncl) {
+            Response::error("Заморозка вже триває {$usedIncl} дн. (включно з сьогодні). Щоб завершити її раніше — натисніть «Розморозити».");
         }
 
-        $prolongDays  = (int)($inv['prolong_days'] ?? 0);
-        $durationDays = isset($tariff['duration_days'])
-            ? (int)$tariff['duration_days']
-            : (int)(strtotime($inv['end_date']) - strtotime($inv['start_date'])) / 86400 - (int)$inv['freeze_days'] - $prolongDays;
-        $newEnd = date('Y-m-d', strtotime($inv['start_date']
-            . " +{$durationDays} days +{$newDays} days +{$prolongDays} days"));
+        $delta = $newDays - $current;
+        inv_checkFreezeLimits($pdo, $inv, $newDays, (int)$inv['freeze_days'] + $delta);
+        $newEnd = date('Y-m-d', strtotime($inv['end_date'] . ($delta >= 0 ? " +{$delta}" : " {$delta}") . ' days'));
 
         // Не можна зменшувати, якщо це виштовхне вже зафіксовані відвідування за межі нового терміну
         $visitStmt = $pdo->prepare("SELECT MAX(visited_at) FROM visits WHERE invoice_id = ?");
@@ -663,10 +616,10 @@ try { switch ($action) {
 
         $pdo->prepare("
             UPDATE client_invoices SET
-                freeze_days = ?,
-                end_date    = ?
+                freeze_days = GREATEST(0, freeze_days + ?), freeze_current_days = ?, end_date = ?
             WHERE id = ?
-        ")->execute([$newDays, $newEnd, $id]);
+        ")->execute([$delta, $newDays, $newEnd, $id]);
+        Recalc::autoUnfreezeExpired($pdo, $clubId);
         Recalc::unlockInvoiceTrainerEarnings($pdo, $id);
 
         Response::ok(['new_end_date' => $newEnd], "Кількість днів заморозки змінено на {$newDays}. Новий термін дії: до {$newEnd}.");
@@ -829,4 +782,37 @@ function self_addPayment(
     // журнал і нових 'earn'-записів більше не отримує.
 
     return $paymentId;
+}
+
+// ── Заморозка: хелпери ───────────────────────────────────────
+function inv_loadFreezable(PDO $pdo, int $id, int $clubId): array {
+    $stmt = $pdo->prepare("
+        SELECT * FROM client_invoices
+        WHERE id = ? AND club_id = ? AND status IN ('active','frozen')
+        LIMIT 1
+    ");
+    $stmt->execute([$id, $clubId]);
+    $inv = $stmt->fetch();
+    if (!$inv) Response::error('Абонемент не знайдено або він не активний');
+    return $inv;
+}
+
+// Тривалість поточної заморозки (для записів до появи freeze_current_days — загальна).
+function inv_currentFreezeDays(array $inv): int {
+    return (int)($inv['freeze_current_days'] ?? $inv['freeze_days']);
+}
+
+// Ліміти тарифу: мінімум — на одну заморозку, максимум — на весь абонемент (сума заморозок).
+function inv_checkFreezeLimits(PDO $pdo, array $inv, int $days, int $totalDays): void {
+    if (!$inv['tariff_id']) return;
+    $st = $pdo->prepare("SELECT freeze_days_max, freeze_days_min FROM tariffs WHERE id=? LIMIT 1");
+    $st->execute([$inv['tariff_id']]);
+    $t = $st->fetch() ?: [];
+    $max = (int)($t['freeze_days_max'] ?? 0);
+    $min = (int)($t['freeze_days_min'] ?? 0);
+    if ($min > 0 && $days < $min) Response::error("Мінімум заморозки для цього тарифу: {$min} дн.");
+    if ($max > 0 && $totalDays > $max) {
+        $left = max(0, $max - ((int)$inv['freeze_days'] - inv_currentFreezeDays($inv) * ($inv['freeze_start'] ? 1 : 0)));
+        Response::error("Максимум заморозки для цього тарифу: {$max} дн. на абонемент. Доступно: {$left} дн.");
+    }
 }

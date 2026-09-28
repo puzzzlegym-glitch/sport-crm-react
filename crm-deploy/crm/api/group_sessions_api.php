@@ -35,6 +35,8 @@ $clubId = (int)($input['club_id'] ?? $_GET['club_id'] ?? $sess['active_club_id']
 if (!$clubId) Response::error('Не обрано клуб', 400);
 
 Auth::requireClubAccess($sess, $clubId, 30);
+// Заморозки: вмикаємо заплановані / знімаємо завершені перед перевіркою абонемента.
+Recalc::autoUnfreezeExpired($pdo, $clubId);
 $userId = (int)$sess['user_id'];
 
 function myTrainerId(PDO $pdo, int $clubId, int $userId): int {

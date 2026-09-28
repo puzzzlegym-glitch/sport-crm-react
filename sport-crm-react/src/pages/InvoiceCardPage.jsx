@@ -88,7 +88,7 @@ export default function InvoiceCardPage() {
     setView({ loading: false, invoice: inv, payments: res.payments || [] });
     setVisitsTab(null);
     setFreezeStart('');
-    setFreezeDays(inv.status === 'frozen' ? inv.freeze_days : (inv.tariff_freeze_min || 7));
+    setFreezeDays(inv.freeze_start ? (inv.freeze_current_days ?? inv.freeze_days) : (inv.tariff_freeze_min || 7));
   }, [invoiceId, toast]);
 
   useEffect(() => { load(); }, [load]);
@@ -297,9 +297,14 @@ export default function InvoiceCardPage() {
   const visitsPct = inv.visits_total ? Math.min(100, Math.round((inv.visits_used / inv.visits_total) * 100)) : null;
 
   // Заморозка можлива лише в межах дії абонементу: з 2-го дня по передостанній
-  const freezeMinDate = [localToday(), addDaysLocal(inv.start_date, 1)].sort().pop();
+  // Заморозка — не раніше наступного дня після заявки (сьогоднішній день уже почався)
+  const freezeMinDate = [addDaysLocal(localToday(), 1), addDaysLocal(inv.start_date, 1)].sort().pop();
+  const isFreezeScheduled = inv.status === 'active' && !!inv.freeze_start;
+  const hasFreeze = inv.status === 'frozen' || isFreezeScheduled;
+  const curFreezeDays = Number(inv.freeze_current_days ?? inv.freeze_days) || 0;
+  const freezeLastDay = inv.freeze_start ? addDaysLocal(inv.freeze_start, curFreezeDays - 1) : null;
   const freezeMaxDate = addDaysLocal(inv.end_date, -1);
-  const canFreeze = inv.status === 'active' && freezeMinDate && freezeMaxDate && freezeMinDate <= freezeMaxDate;
+  const canFreeze = inv.status === 'active' && !inv.freeze_start && freezeMinDate && freezeMaxDate && freezeMinDate <= freezeMaxDate;
   const freezeDaysMin = inv.tariff_freeze_min > 0 ? inv.tariff_freeze_min : 1;
   const freezeDaysMax = inv.tariff_freeze_max > 0 ? inv.tariff_freeze_max : 90;
 
@@ -318,7 +323,8 @@ export default function InvoiceCardPage() {
   const infoRows = [
     ['cart', 'Тип продажу', <Badge key="sale-type" variant="info">{SALE_TYPE_LABELS[inv.sale_type] || 'Новий клієнт'}</Badge>],
     inv.trainer_name ? ['user', 'Тренер', inv.trainer_name] : null,
-    inv.freeze_days > 0 ? ['clock', 'Заморожено на', `${inv.freeze_days} дн. з ${formatDate(inv.freeze_start)}`] : null,
+    inv.freeze_start ? ['clock', inv.status === 'frozen' ? 'Заморожено' : 'Заплановано заморозку', `${curFreezeDays} дн.: ${formatDate(inv.freeze_start)} — ${formatDate(freezeLastDay)}`] : null,
+    inv.freeze_days > 0 ? ['clock', 'Всього днів заморозки', `${inv.freeze_days} дн.`] : null,
     ['briefcase', 'Менеджер', inv.admin_name || '—'],
     ['user', 'Клієнт', <Link key="client" to={`/clients/${inv.client_id}`}>{inv.client_name}</Link>],
     ['calendar', 'Створено', `${formatDate(inv.created_at)} ${formatTime(inv.created_at)}`],
@@ -446,7 +452,8 @@ export default function InvoiceCardPage() {
             <div className="icard-stat-label">Закінчується</div>
             <div className="icard-stat-value">{formatDate(inv.end_date)}</div>
             {daysLeft != null && <div className={`icard-stat-delta ${daysLeft <= 7 ? 'down' : ''}`}>{daysLeft <= 0 ? 'Прострочено' : `через ${daysLeft} дн.`}</div>}
-            {inv.status === 'frozen' && <div className="icard-stat-delta">❄ заморожено на {inv.freeze_days} дн.</div>}
+            {inv.status === 'frozen' && <div className="icard-stat-delta">❄ заморожено до {formatDate(freezeLastDay)}</div>}
+            {isFreezeScheduled && <div className="icard-stat-delta">❄ заморозка з {formatDate(inv.freeze_start)}</div>}
           </div>
         </div>
         <div className="icard-stat" style={{ '--icard-accent': 'var(--success)' }}>
@@ -596,14 +603,18 @@ export default function InvoiceCardPage() {
           {has('invoices.cancel') && inv.status !== 'cancelled' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ padding: 14, background: 'var(--bg-elevated)', borderRadius: 'var(--radius-sm)' }}>
-                {inv.status === 'frozen' ? (
+                {hasFreeze ? (
                   <>
-                    <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Заморожено на {inv.freeze_days} дн. з {formatDate(inv.freeze_start)}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>
+                      {isFreezeScheduled ? 'Заплановано заморозку' : 'Заморожено'} на {curFreezeDays} дн.: {formatDate(inv.freeze_start)} — {formatDate(freezeLastDay)}
+                    </div>
                     <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10 }}>
-                      «Розморозити» — зарахує реально використані дні заморозки й скоротить термін лише на невикористані. «Відмінити заморозку» — повністю скасує заморозку, ніби її не було, термін абонементу повернеться до дати без будь-яких доданих днів.
+                      {isFreezeScheduled
+                        ? 'До першого дня заморозки клієнт може відвідувати клуб. «Відмінити заморозку» — прибере її, термін абонементу повернеться до попередньої дати.'
+                        : '«Розморозити» — зарахує використані дні (до вчора включно, сьогодні клієнт уже активний) і скоротить термін лише на невикористані. «Відмінити заморозку» — повністю скасує заморозку, ніби її не було.'}
                     </div>
                     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
-                      <button className="btn btn-primary btn-sm" onClick={submitFreeze}>Розморозити</button>
+                      {!isFreezeScheduled && <button className="btn btn-primary btn-sm" onClick={submitFreeze}>Розморозити</button>}
                       <button className="btn btn-ghost btn-sm" onClick={submitCancelFreeze}>Відмінити заморозку</button>
                     </div>
                     <div style={{ paddingTop: 12, borderTop: '1px solid var(--border)' }}>
@@ -624,7 +635,7 @@ export default function InvoiceCardPage() {
                   <>
                     <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Заморозити абонемент</div>
                     <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                      Заморозка можлива лише для активного абонементу — з 2-го дня по передостанній день його дії.
+                      Заморозка можлива лише для активного абонементу — не раніше наступного дня після заявки і не пізніше передостаннього дня його дії.
                     </div>
                   </>
                 ) : (

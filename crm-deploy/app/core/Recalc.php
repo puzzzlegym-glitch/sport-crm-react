@@ -71,26 +71,40 @@ class Recalc
     }
 
     /**
-     * Розморожує абонементи, у яких запланований термін заморозки
-     * (freeze_start + freeze_days) уже минув, а адміністратор не натиснув
-     * "розморозити" вручну. Без цього ci.status лишається 'frozen' назавжди
-     * (це ручний стан — не рахується EFFECTIVE_STATUS_SQL по датах), через
-     * що абонемент "зависає" замороженим і після власного end_date замість
-     * природного переходу active→finished. end_date вже враховує повний
-     * запланований freeze_days, тож при природному спливанні терміну
-     * коригувати його не потрібно (на відміну від ручного дострокового
-     * розморожування в invoices_api.php:freeze). Викликати на початку
-     * кожного запиту, що читає/фільтрує client_invoices.status для клубу.
+     * Синхронізує status із поточною заморозкою (freeze_start + freeze_current_days).
+     * Заморозка завжди починається не раніше наступного дня після заявки, тож до
+     * freeze_start абонемент "активний із запланованою заморозкою" (клієнт ходить),
+     * а 'frozen' вмикається в перший день заморозки і знімається після останнього.
+     * end_date уже подовжено на повну тривалість при оформленні, тож при природному
+     * завершенні його не чіпаємо (на відміну від дострокового розморожування в
+     * invoices_api.php:freeze). Викликати на початку кожного запиту, що
+     * читає/фільтрує client_invoices.status для клубу.
      */
     public static function autoUnfreezeExpired(PDO $pdo, int $clubId): void
     {
+        // COALESCE — для заморозок, оформлених до появи freeze_current_days.
+        $window = "DATE_ADD(freeze_start, INTERVAL COALESCE(freeze_current_days, freeze_days) DAY)";
+
+        // Заморозка скінчилась (або минула, так і не почавшись для 'active') — знімаємо.
         $pdo->prepare("
             UPDATE client_invoices
-            SET status = 'active', freeze_start = NULL
-            WHERE club_id = ?
-              AND status = 'frozen'
-              AND freeze_start IS NOT NULL
-              AND DATE_ADD(freeze_start, INTERVAL freeze_days DAY) <= CURDATE()
+            SET status = 'active', freeze_start = NULL, freeze_current_days = NULL
+            WHERE club_id = ? AND status IN ('frozen','active')
+              AND freeze_start IS NOT NULL AND {$window} <= CURDATE()
+        ")->execute([$clubId]);
+
+        // Перший день заморозки настав — вмикаємо.
+        $pdo->prepare("
+            UPDATE client_invoices SET status = 'frozen'
+            WHERE club_id = ? AND status = 'active'
+              AND freeze_start IS NOT NULL AND freeze_start <= CURDATE() AND {$window} > CURDATE()
+        ")->execute([$clubId]);
+
+        // Заморозка ще попереду, а status уже 'frozen' (оформлено старим кодом) — клієнт
+        // має ходити до її початку.
+        $pdo->prepare("
+            UPDATE client_invoices SET status = 'active'
+            WHERE club_id = ? AND status = 'frozen' AND freeze_start > CURDATE()
         ")->execute([$clubId]);
     }
 

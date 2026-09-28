@@ -260,7 +260,7 @@ export default function InvoicesPage() {
           return <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>з {formatDate(inv.start_date)} ({untilStart} дн.)</div>;
         }
         if (inv.status === 'finished') return <div className="days-left expired">Завершено</div>;
-        if (inv.status === 'frozen') return <div style={{ fontSize: 12, color: 'var(--warning)' }}>❄ {inv.freeze_days} дн.</div>;
+        if (inv.status === 'frozen') return <div style={{ fontSize: 12, color: 'var(--warning)' }}>❄ {inv.freeze_current_days ?? inv.freeze_days} дн.</div>;
         return '—';
       },
     },
