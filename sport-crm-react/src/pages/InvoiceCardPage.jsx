@@ -16,6 +16,7 @@ import {
 import { getTrainers } from '../api/trainers';
 import { getVisitsList } from '../api/visits';
 import { formatMoney, formatDate, formatTime, localToday, localDate } from '../utils/format';
+import { previewInvoiceEdit } from '../utils/invoiceEdit';
 import './InvoiceCardPage.css';
 
 const STATUS_MAP = {
@@ -120,24 +121,22 @@ export default function InvoiceCardPage() {
       end_date: (inv.end_date || '').substring(0, 10), price: inv.price ?? 0,
       visits_total: inv.visits_total ?? '', visits_used: inv.visits_used ?? 0,
       status: inv.status || 'active', trainer_id: inv.trainer_id || '', notes: inv.notes || '',
+      orig: inv,
       submitting: false, error: '',
     });
   }
 
   function editTariffChange(tariffId) {
     const t = tariffs.find((x) => String(x.id) === String(tariffId));
-    setEditInv((s) => {
-      const next = { ...s, tariff_id: tariffId };
-      if (t) {
-        const d = new Date(s.start_date || localToday());
-        d.setDate(d.getDate() + parseInt(t.duration_days) - 1);
-        next.end_date = localDate(d);
-        next.price = t.price;
-        next.visits_total = t.visits_limit ?? '';
-        if (!t.has_trainer) next.trainer_id = '';
-      }
-      return next;
-    });
+    setEditInv((s) => ({
+      ...s, tariff_id: tariffId,
+      ...previewInvoiceEdit(s.orig, tariffs, tariffId, s.start_date),
+      ...(t && !t.has_trainer ? { trainer_id: '' } : {}),
+    }));
+  }
+
+  function editStartChange(startDate) {
+    setEditInv((s) => ({ ...s, start_date: startDate, ...previewInvoiceEdit(s.orig, tariffs, s.tariff_id, startDate) }));
   }
 
   async function submitEditInv() {
@@ -848,7 +847,7 @@ export default function InvoiceCardPage() {
                 </select>
               </FormGroup>
               <FormGroup label="Дата початку">
-                <input type="date" value={editInv.start_date} onChange={(e) => setEditInv({ ...editInv, start_date: e.target.value })} />
+                <input type="date" value={editInv.start_date} onChange={(e) => editStartChange(e.target.value)} />
               </FormGroup>
               <FormGroup label="Дата закінчення">
                 <input type="date" value={editInv.end_date} disabled />

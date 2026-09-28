@@ -15,6 +15,18 @@ define('APP_ROOT', __DIR__); // абсолютний шлях до /app — ви
 $appDir = __DIR__;
 
 require_once $appDir . '/config.php';
+
+// Часовий пояс — однаковий для PHP (date()) і MySQL (NOW()/CURDATE(), див. Database.php),
+// інакше ввечері "сьогодні" в PHP і в базі розходяться (зміни, заморозки, звіти).
+// Нова назва Europe/Kyiv є лише в новішій tzdata, стара Europe/Kiev — лише в старішій
+// (у PHP 8.4 її вже немає), тож пробуємо обидві.
+if (!defined('APP_TIMEZONE')) define('APP_TIMEZONE', 'Europe/Kyiv');
+foreach ([APP_TIMEZONE, 'Europe/Kyiv', 'Europe/Kiev'] as $tz) {
+    if (in_array($tz, timezone_identifiers_list(DateTimeZone::ALL_WITH_BC), true)) {
+        date_default_timezone_set($tz);
+        break;
+    }
+}
 require_once $appDir . '/core/Database.php';
 require_once $appDir . '/core/Response.php';
 require_once $appDir . '/core/Auth.php';

@@ -34,7 +34,10 @@ class Database
                 PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,   // кидати виняток при помилці
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,         // результат як масив
                 PDO::ATTR_EMULATE_PREPARES   => false,                     // справжні prepared statements
-                PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci",
+                // time_zone — зміщення поточного пояса PHP (напр. +03:00 влітку, +02:00 взимку):
+                // NOW()/CURDATE() у запитах збігаються з date() у PHP. Зміщення, а не назва
+                // пояса, бо таблиць часових поясів у MySQL на хостингу може не бути.
+                PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci, time_zone = '" . date('P') . "'",
             ];
 
             try {

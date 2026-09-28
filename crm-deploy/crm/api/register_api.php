@@ -62,6 +62,11 @@ try { switch ($action) {
         if (strlen($clubName) < 2)                          $errors[] = 'Введіть назву клубу';
         if (!empty($errors)) Response::error(implode('. ', $errors));
 
+        // Лише плани, які показує сторінка реєстрації (billing_api get_plans: is_active = 1).
+        $planOk = $pdo->prepare("SELECT 1 FROM saas_plans WHERE id = ? AND is_active = 1 LIMIT 1");
+        $planOk->execute([$planId]);
+        if (!$planOk->fetchColumn()) Response::error('Оберіть тарифний план зі списку');
+
         // Перевірка що email вільний
         $dup = $pdo->prepare("SELECT 1 FROM sys_users WHERE email=? LIMIT 1");
         $dup->execute([$email]);

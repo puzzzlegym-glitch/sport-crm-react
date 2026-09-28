@@ -45,6 +45,9 @@ $userId    = (int)$sess['user_id'];
 // замороженим назавжди (див. Recalc::autoUnfreezeExpired).
 Recalc::autoUnfreezeExpired($pdo, $clubId);
 
+// Способи оплати абонемента (= ENUM club_payments.payment_method)
+const INV_PAY_METHODS = ['cash', 'card', 'terminal', 'deposit', 'transfer', 'free', 'other'];
+
 // Реальний статус абонементу — рахується з дат/відвідувань, а не зі збереженої
 // колонки status (вона не оновлюється кроном і "зависає" на active після end_date).
 // Рівно 5 статусів: future / active / frozen / finished / cancelled.
@@ -226,6 +229,8 @@ try { switch ($action) {
 
         if (!$clientId) Response::error('Оберіть клієнта');
         if (!$tariffId) Response::error('Оберіть тариф');
+        if ($paidNow < 0) Response::error('Сума оплати не може бути від\'ємною');
+        if ($paidNow > 0 && !in_array($method, INV_PAY_METHODS, true)) Response::error('Невірний спосіб оплати');
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $startDate)) $startDate = date('Y-m-d');
 
         // Перевірка зміни якщо оплата готівкою
@@ -289,6 +294,12 @@ try { switch ($action) {
         // Ціна зі знижкою
         $discount  = max(0, min(100, (float)($input['discount'] ?? 0)));
         $finalPrice = round($tariff['price'] * (1 - $discount / 100), 2);
+        if ($paidNow > $finalPrice + 0.001) {
+            Response::error('Оплата (' . number_format($paidNow, 2, '.', ' ') . ' грн) більша за ціну абонемента (' . number_format($finalPrice, 2, '.', ' ') . ' грн)');
+        }
+        if ($paidNow > 0 && $method === 'deposit' && (float)$client['balance'] < $paidNow - 0.001) {
+            Response::error('Недостатньо коштів на депозиті. Баланс: ' . number_format((float)$client['balance'], 2, '.', ' ') . ' грн');
+        }
 
         // Тренер — лише якщо тариф це дозволяє (tariffs.has_trainer)
         $trainerId   = (int)($input['trainer_id']   ?? 0) ?: null;
@@ -384,12 +395,31 @@ try { switch ($action) {
         $tariff = $tStmt->fetch();
         if (!$tariff) Response::error('Тариф не знайдено');
 
-        // Автоматичні поля з тарифу — не редагуються вручну, завжди перераховуються системою.
-        // -1, бо статус "активний" тримається включно по end_date.
-        $endDate     = date('Y-m-d', strtotime($startDate . ' +' . ($tariff['duration_days'] - 1) . ' days'));
-        $price       = (float)$tariff['price'];
-        $visitsTotal = $tariff['visits_limit'] ?: null;
-        $visitsUsed  = (int)$inv['visits_used'];
+        $visitsUsed = (int)$inv['visits_used'];
+        if ((int)$tariffId === (int)$inv['tariff_id']) {
+            // Тариф той самий — ціну (зі знижкою), ліміт і тривалість не чіпаємо;
+            // зміна дати початку зсуває кінець на ту саму кількість днів (заморозки й
+            // продовження, вже враховані в end_date, зберігаються).
+            $shiftDays   = (int)round((strtotime($startDate) - strtotime($inv['start_date'])) / 86400);
+            $endDate     = date('Y-m-d', strtotime($inv['end_date'] . ($shiftDays >= 0 ? " +{$shiftDays}" : " {$shiftDays}") . ' days'));
+            $price       = (float)$inv['price'];
+            $visitsTotal = $inv['visits_total'] !== null ? (int)$inv['visits_total'] : null;
+        } else {
+            // Інший тариф — ціна нового тарифу з тією ж знижкою, що була при продажу
+            // (частка ціни абонемента від ціни старого тарифу), тривалість нового тарифу
+            // плюс уже надані дні заморозки й продовження. -1: день кінця включно.
+            $oldT = $pdo->prepare("SELECT price FROM tariffs WHERE id=? AND club_id=? LIMIT 1");
+            $oldT->execute([$inv['tariff_id'], $clubId]);
+            $oldPrice = (float)($oldT->fetchColumn() ?: 0);
+            $ratio    = $oldPrice > 0 ? min(1, (float)$inv['price'] / $oldPrice) : 1;
+            $price    = round((float)$tariff['price'] * $ratio, 2);
+            $extra    = (int)$inv['freeze_days'] + (int)($inv['prolong_days'] ?? 0);
+            $endDate  = date('Y-m-d', strtotime($startDate . ' +' . ((int)$tariff['duration_days'] - 1 + $extra) . ' days'));
+            $visitsTotal = $tariff['visits_limit'] ?: null;
+        }
+        if ($visitsTotal !== null && $visitsUsed > $visitsTotal) {
+            Response::error("Клієнт уже використав {$visitsUsed} занять — більше, ніж {$visitsTotal} у новому тарифі.");
+        }
 
         $tariffName = $tariff['name'];
 
@@ -635,6 +665,7 @@ try { switch ($action) {
 
         if (!$invoiceId) Response::error('Не вказано invoice_id');
         if ($amount <= 0) Response::error('Введіть суму');
+        if (!in_array($method, INV_PAY_METHODS, true)) Response::error('Невірний спосіб оплати');
 
         // Перевірка зміни якщо оплата готівкою
         $shiftId = null;
@@ -646,6 +677,20 @@ try { switch ($action) {
         $invStmt->execute([$invoiceId, $clubId]);
         $inv = $invStmt->fetch();
         if (!$inv) Response::error('Абонемент не знайдено');
+
+        $debt = round((float)$inv['price'] - (float)$inv['paid_amount'], 2);
+        if ($debt <= 0) Response::error('Абонемент уже повністю оплачено');
+        if ($amount > $debt + 0.001) {
+            Response::error('Сума більша за борг. Залишилось сплатити: ' . number_format($debt, 2, '.', ' ') . ' грн');
+        }
+        if ($method === 'deposit') {
+            $bal = $pdo->prepare("SELECT balance FROM clients WHERE id=? AND club_id=? LIMIT 1");
+            $bal->execute([$inv['client_id'], $clubId]);
+            $balance = (float)$bal->fetchColumn();
+            if ($balance < $amount - 0.001) {
+                Response::error('Недостатньо коштів на депозиті. Баланс: ' . number_format($balance, 2, '.', ' ') . ' грн');
+            }
+        }
 
         $pdo->beginTransaction();
         try {
