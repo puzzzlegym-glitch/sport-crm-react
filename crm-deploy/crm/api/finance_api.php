@@ -61,11 +61,12 @@ if ($action === 'get_dashboard') {
             $cashByLocation[$row['location']] = (float)$row['bal'];
         }
 
-        // Абонементи (кількість оплачених)
+        // Абонементи — кількість ПРОДАНИХ за період (не оплат: оплата частинами
+        // й повернення не збільшують цифру). Скасовані не рахуються.
         $inv = $pdo->prepare("
-            SELECT COUNT(*) AS cnt, COALESCE(SUM(cp.amount),0) AS total
-            FROM club_payments cp
-            WHERE cp.club_id=? AND cp.invoice_id IS NOT NULL AND DATE(cp.created_at) BETWEEN ? AND ?
+            SELECT COUNT(*) AS cnt, COALESCE(SUM(ci.price),0) AS total
+            FROM client_invoices ci
+            WHERE ci.club_id=? AND ci.status <> 'cancelled' AND DATE(ci.created_at) BETWEEN ? AND ?
         ");
         $inv->execute([$clubId, $d1, $d2]);
         $i = $inv->fetch();
@@ -169,8 +170,9 @@ if ($action === 'get_dashboard_trend') {
             COALESCE((SELECT SUM(amount) FROM club_expenses WHERE club_id=? AND payment_method='cash' AND expense_date BETWEEN ? AND ?),0) AS amt");
         $r->execute([$clubId,$d1,$d2, $clubId,$d1,$d2, $clubId,$d1,$d2]); $cash = (float)$r->fetchColumn();
 
-        $r = $pdo->prepare("SELECT COUNT(*) AS c, COALESCE(SUM(cp.amount),0) AS a
-            FROM club_payments cp WHERE cp.club_id=? AND cp.invoice_id IS NOT NULL AND DATE(cp.created_at) BETWEEN ? AND ?");
+        // Продані абонементи (як у get_dashboard), а не оплати
+        $r = $pdo->prepare("SELECT COUNT(*) AS c, COALESCE(SUM(ci.price),0) AS a
+            FROM client_invoices ci WHERE ci.club_id=? AND ci.status <> 'cancelled' AND DATE(ci.created_at) BETWEEN ? AND ?");
         $r->execute([$clubId,$d1,$d2]); $inv = $r->fetch();
 
         $r = $pdo->prepare("SELECT COUNT(*) FROM visits WHERE club_id=? AND DATE(visited_at) BETWEEN ? AND ?");

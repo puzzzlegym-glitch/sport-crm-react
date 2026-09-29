@@ -49,12 +49,29 @@ try { switch ($action) {
 
         $hub = getDriveHubClubStats($phones10);
 
+        // Бот CRM — з config.php (TELEGRAM_BOT_*), а не зашитий у фронтенд.
+        // "Налаштовано" = токен і username заповнені (не шаблонні значення з config.example.php).
+        $botUser  = defined('TELEGRAM_BOT_USERNAME') ? ltrim(trim((string)TELEGRAM_BOT_USERNAME), '@') : '';
+        $botToken = defined('TELEGRAM_BOT_TOKEN') ? trim((string)TELEGRAM_BOT_TOKEN) : '';
+        $botConfigured = $botUser !== '' && $botToken !== ''
+            && $botUser !== 'ваш_bot_username' && $botToken !== 'токен_від_BotFather';
+
         Response::ok([
             'total_clients'       => $totalClients,
             'telegram_linked'     => $telegramLinked,
             'hub_connected'       => $hub['connected'],
             'app_users'           => $hub['app_users'],
             'app_users_verified'  => $hub['app_users_verified'],
+            'crm_bot' => [
+                'username'   => $botConfigured ? $botUser : null,
+                'configured' => $botConfigured,
+            ],
+            // Клієнтський застосунок — спільний для всіх клубів; можна перевизначити в config.php
+            'app' => [
+                'name'         => defined('DRIVEHUB_APP_NAME') ? DRIVEHUB_APP_NAME : 'DRIVE SPORT HUB',
+                'url'          => defined('DRIVEHUB_APP_URL') ? DRIVEHUB_APP_URL : 'https://ds-hub.pp.ua/',
+                'bot_username' => defined('DRIVEHUB_BOT_USERNAME') ? DRIVEHUB_BOT_USERNAME : 'DriveSportHub_bot',
+            ],
         ]);
 
 

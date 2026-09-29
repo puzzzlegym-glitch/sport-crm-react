@@ -8,21 +8,9 @@ import { useToast } from '../components/ui/ToastProvider';
 import { getClientServiceStats } from '../api/clientService';
 import './ClientServicePage.css';
 
-const APP_URL = 'https://ds-hub.pp.ua/';
-const APP_NAME = 'DRIVE SPORT HUB';
-
-const BOTS = [
-  {
-    name: 'Tviy Gym (CRM)',
-    username: 'tviygym_bot',
-    desc: 'Бот для роботи з CRM, запису клієнтів, сповіщень та комунікації з клієнтами клубу.',
-  },
-  {
-    name: 'Drive Sport Hub (Застосунок)',
-    username: 'DriveSportHub_bot',
-    desc: 'Бот клієнтського застосунку. Допомагає з авторизацією, підтримкою та сповіщеннями.',
-  },
-];
+// Значення за замовчуванням — поки сервер не відповів (сервер може перевизначити
+// через DRIVEHUB_APP_* у config.php). Бот CRM береться ЛИШЕ з сервера (TELEGRAM_BOT_USERNAME).
+const DEFAULT_APP = { name: 'DRIVE SPORT HUB', url: 'https://ds-hub.pp.ua/', bot_username: 'DriveSportHub_bot' };
 
 const STEPS = [
   { n: 1, title: 'Створити клієнта в CRM', desc: 'Додайте нового клієнта або виберіть існуючого.' },
@@ -32,9 +20,10 @@ const STEPS = [
   { n: 5, title: 'Автоматична прив’язка', desc: 'CRM знаходить клієнта за номером і виконує прив’язку.' },
 ];
 
-const INVITE_TEXT =
-  `Привіт! Керуй своїми тренуваннями, харчуванням і прогресом у застосунку ${APP_NAME}:\n${APP_URL}\n\n` +
-  `Або одразу через Telegram-бота: https://t.me/DriveSportHub_bot`;
+function inviteText(app) {
+  return `Привіт! Керуй своїми тренуваннями, харчуванням і прогресом у застосунку ${app.name}:\n${app.url}` +
+    (app.bot_username ? `\n\nАбо одразу через Telegram-бота: https://t.me/${app.bot_username}` : '');
+}
 
 function StatCard({ icon, accent, label, value, sub, trend, loading }) {
   return (
@@ -50,6 +39,7 @@ function StatCard({ icon, accent, label, value, sub, trend, loading }) {
   );
 }
 
+// status: { variant, text } — справжній стан, а не фіксований «Працює»
 function BotCard({ bot }) {
   const toast = useToast();
   return (
@@ -58,23 +48,25 @@ function BotCard({ bot }) {
         <div className="csp-bot-icon"><Icon name="send" size={15} /></div>
         <div className="csp-bot-name-wrap">
           <div className="csp-bot-name">{bot.name}</div>
-          <div className="csp-bot-username">@{bot.username}</div>
+          <div className="csp-bot-username">{bot.username ? `@${bot.username}` : 'бот не вказано'}</div>
         </div>
-        <Badge variant="active">🟢 Працює</Badge>
+        <Badge variant={bot.status.variant}>{bot.status.text}</Badge>
       </div>
       <div className="csp-bot-desc">{bot.desc}</div>
-      <div className="csp-bot-actions">
-        <a className="btn btn-ghost btn-sm" href={`https://t.me/${bot.username}`} target="_blank" rel="noreferrer">
-          Відкрити в Telegram <Icon name="chevronRight" size={12} />
-        </a>
-        <button
-          className="csp-icon-btn"
-          title="Копіювати username"
-          onClick={() => { navigator.clipboard?.writeText(`@${bot.username}`); toast('Username скопійовано', 'success'); }}
-        >
-          <Icon name="copy" size={13} />
-        </button>
-      </div>
+      {bot.username && (
+        <div className="csp-bot-actions">
+          <a className="btn btn-ghost btn-sm" href={`https://t.me/${bot.username}`} target="_blank" rel="noreferrer">
+            Відкрити в Telegram <Icon name="chevronRight" size={12} />
+          </a>
+          <button
+            className="csp-icon-btn"
+            title="Копіювати username"
+            onClick={() => { navigator.clipboard?.writeText(`@${bot.username}`); toast('Username скопійовано', 'success'); }}
+          >
+            <Icon name="copy" size={13} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -86,16 +78,20 @@ export default function ClientServicePage() {
   const [bigQrOpen, setBigQrOpen] = useState(false);
   const [instructionsOpen, setInstructionsOpen] = useState(false);
 
+  const app = { ...DEFAULT_APP, ...(stats?.app || {}) };
+  const APP_URL = app.url;
+  const APP_NAME = app.name;
+
   useEffect(() => {
     (async () => {
-      const [statsRes, qr] = await Promise.all([
-        getClientServiceStats(),
-        QRCode.toDataURL(APP_URL, { width: 400, margin: 1 }),
-      ]);
+      const statsRes = await getClientServiceStats();
       if (statsRes.success) setStats(statsRes);
-      setHeroQr(qr);
     })();
   }, []);
+
+  useEffect(() => {
+    QRCode.toDataURL(APP_URL, { width: 400, margin: 1 }).then(setHeroQr).catch(() => setHeroQr(''));
+  }, [APP_URL]);
 
   function copyAppLink() {
     navigator.clipboard?.writeText(APP_URL);
@@ -103,12 +99,33 @@ export default function ClientServicePage() {
   }
 
   function copyInvite() {
-    navigator.clipboard?.writeText(INVITE_TEXT);
+    navigator.clipboard?.writeText(inviteText(app));
     toast('Текст запрошення скопійовано — вставте в будь-який месенджер', 'success');
   }
 
   const hubConnected = stats?.hub_connected;
   const totalClients = stats?.total_clients ?? 0;
+  const crmBot = stats?.crm_bot;
+
+  const loadingStatus = { variant: 'inactive', text: '…' };
+  const BOTS = [
+    {
+      name: 'Бот клубу',
+      username: crmBot?.username || null,
+      desc: crmBot && !crmBot.configured
+        ? 'Бот не налаштовано: у файлі app/config.php на сервері вкажіть TELEGRAM_BOT_TOKEN і TELEGRAM_BOT_USERNAME (див. Налаштування → Telegram).'
+        : 'Бот для сповіщень клієнтів клубу та прив’язки їхнього Telegram до картки в CRM.',
+      status: !stats ? loadingStatus
+        : crmBot?.configured ? { variant: 'active', text: '🟢 Налаштовано' } : { variant: 'inactive', text: '🔴 Не налаштовано' },
+    },
+    {
+      name: 'Бот застосунку',
+      username: app.bot_username || null,
+      desc: `Бот застосунку ${APP_NAME}. Допомагає з авторизацією, підтримкою та сповіщеннями.`,
+      status: !stats ? loadingStatus
+        : hubConnected ? { variant: 'active', text: '🟢 Зв’язано з CRM' } : { variant: 'pending', text: '🟡 Не зв’язано' },
+    },
+  ];
 
   const QUICK_ACTIONS = [
     { icon: 'copy', accent: 'var(--accent)', title: 'Скопіювати посилання', desc: `${APP_URL}`, onClick: copyAppLink },
@@ -129,7 +146,11 @@ export default function ClientServicePage() {
               <div className="csp-hero-title">{APP_NAME}</div>
               <Badge variant="info">Клієнтський застосунок</Badge>
             </div>
-            <div className="csp-hero-status"><Badge variant="active">🟢 Працює</Badge></div>
+            <div className="csp-hero-status">
+              {!stats ? <Badge variant="inactive">…</Badge>
+                : hubConnected ? <Badge variant="active">🟢 Підключено до CRM</Badge>
+                  : <Badge variant="pending">🟡 Статистику застосунку не підключено</Badge>}
+            </div>
             <p className="csp-hero-desc">Тренування, харчування, прогрес — в одному застосунку.</p>
             <div className="csp-hero-url"><Icon name="globe" size={13} /> {APP_URL.replace(/^https?:\/\//, '').replace(/\/$/, '')}</div>
             <div className="csp-hero-actions">
@@ -181,7 +202,7 @@ export default function ClientServicePage() {
           <div className="csp-bots-section">
             <div className="csp-section-title">Telegram боти</div>
             <div className="csp-bots-grid">
-              {BOTS.map((bot) => <BotCard key={bot.username} bot={bot} />)}
+              {BOTS.map((bot) => <BotCard key={bot.name} bot={bot} />)}
             </div>
           </div>
 

@@ -66,6 +66,12 @@ define('TELEGRAM_BOT_TOKEN',      'токен_від_BotFather');
 define('TELEGRAM_BOT_USERNAME',   'ваш_bot_username'); // без @, для формування t.me/<username>?start=...
 define('TELEGRAM_WEBHOOK_SECRET', 'згенерований_випадковий_рядок_32_символи');
 
+// Клієнтський застосунок на сторінці "Клієнтський сервіс" (необов'язково —
+// без цих рядків показується DRIVE SPORT HUB / ds-hub.pp.ua / @DriveSportHub_bot)
+// define('DRIVEHUB_APP_NAME',     'DRIVE SPORT HUB');
+// define('DRIVEHUB_APP_URL',      'https://ds-hub.pp.ua/');
+// define('DRIVEHUB_BOT_USERNAME', 'DriveSportHub_bot');
+
 // ── SMTP ─────────────────────────────────────────────────
 define('SMTP_HOST',       'mail.ваш-хостинг.ua');
 define('SMTP_PORT',       465);
