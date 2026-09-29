@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import AppLayout from '../components/layout/AppLayout';
 import Table from '../components/ui/Table';
 import CardMenu from '../components/ui/CardMenu';
@@ -8,6 +8,7 @@ import Pagination from '../components/ui/Pagination';
 import Modal from '../components/ui/Modal';
 import FormGroup from '../components/ui/FormGroup';
 import Badge from '../components/ui/Badge';
+import InvoiceGroupsTab from './InvoiceGroupsTab';
 import { usePermissions } from '../hooks/usePermissions';
 import { useShiftLock } from '../hooks/useShiftLock';
 import { useToast } from '../components/ui/ToastProvider';
@@ -23,12 +24,13 @@ import './InvoicesPage.css';
 const STATUS_MAP = {
   future: ['info', 'Майбутній'],
   active: ['active', 'Активний'],
+  pending: ['pending', 'Очікує оплати'],
   frozen: ['pending', 'Заморожений'],
   finished: ['inactive', 'Завершений'],
   cancelled: ['inactive', 'Скасований'],
 };
 const FILTERS = [
-  ['', 'Всі'], ['future', 'Майбутні'], ['active', 'Активні'], ['frozen', 'Заморожені'],
+  ['', 'Всі'], ['future', 'Майбутні'], ['active', 'Активні'], ['pending', 'Очікують оплати'], ['frozen', 'Заморожені'],
   ['finished', 'Завершені'], ['cancelled', 'Скасовані'],
 ];
 // Тип продажу визначається сервером автоматично при продажу — тут лише відображення.
@@ -48,6 +50,8 @@ export default function InvoicesPage() {
   const { guard, lockedProps } = useShiftLock();
   const toast = useToast();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = searchParams.get('tab') === 'groups' ? 'groups' : 'list';
 
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
@@ -157,6 +161,7 @@ export default function InvoicesPage() {
       end_date: (inv.end_date || '').substring(0, 10), price: inv.price ?? 0,
       visits_total: inv.visits_total ?? '', visits_used: inv.visits_used ?? 0,
       status: inv.status || 'active', trainer_id: inv.trainer_id || '', notes: inv.notes || '',
+      group_id: inv.group_id || null,
     });
   }
 
@@ -231,6 +236,7 @@ export default function InvoicesPage() {
         <>
           <div className="inv-tariff-name" title={inv.tariff_name}>{inv.tariff_name}</div>
           <div className="inv-tariff-dates">{formatDate(inv.start_date)} — {formatDate(inv.end_date)}</div>
+          {inv.group_id && <span className="sale-type-tag">Група</span>}
           {SALE_TYPE_LABELS[inv.sale_type] && (
             <span className={`sale-type-tag sale-type-${inv.sale_type}`}>{SALE_TYPE_LABELS[inv.sale_type]}</span>
           )}
@@ -335,6 +341,12 @@ export default function InvoicesPage() {
 
   return (
     <AppLayout title="Абонементи">
+      <div className="inv-tabs">
+        <button className={`inv-tab ${tab === 'list' ? 'active' : ''}`} onClick={() => setSearchParams({})}>Абонементи</button>
+        <button className={`inv-tab ${tab === 'groups' ? 'active' : ''}`} onClick={() => setSearchParams({ tab: 'groups' })}>Групові</button>
+      </div>
+
+      {tab === 'groups' ? <InvoiceGroupsTab tariffs={tariffs} /> : (<>
       <div className="inv-toolbar">
         <div className="search-wrap">
           <span className="search-icon">🔍</span>
@@ -361,6 +373,7 @@ export default function InvoicesPage() {
       </div>
 
       <Pagination page={data.pagination.page} pages={data.pagination.pages} total={data.pagination.total} perPage={data.pagination.per_page} onChange={setPage} />
+      </>)}
 
       {/* Продати абонемент */}
       <Modal
@@ -486,12 +499,12 @@ export default function InvoicesPage() {
               {!editInv.loading && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 14px' }}>
                   <FormGroup label="Тариф" fullWidth>
-                    <select value={editInv.tariff_id} onChange={(e) => editTariffChange(e.target.value)}>
+                    <select value={editInv.tariff_id} disabled={!!editInv.group_id} onChange={(e) => editTariffChange(e.target.value)}>
                       {tariffs.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                     </select>
                   </FormGroup>
                   <FormGroup label="Дата початку">
-                    <input type="date" value={editInv.start_date} onChange={(e) => setEditInv({ ...editInv, start_date: e.target.value })} />
+                    <input type="date" value={editInv.start_date} disabled={!!editInv.group_id} onChange={(e) => setEditInv({ ...editInv, start_date: e.target.value })} />
                   </FormGroup>
                   <FormGroup label="Дата закінчення">
                     <input type="date" value={editInv.end_date} disabled />

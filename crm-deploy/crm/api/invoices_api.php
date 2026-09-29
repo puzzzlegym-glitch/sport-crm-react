@@ -47,11 +47,13 @@ Recalc::autoUnfreezeExpired($pdo, $clubId);
 
 // Реальний статус абонементу — рахується з дат/відвідувань, а не зі збереженої
 // колонки status (вона не оновлюється кроном і "зависає" на active після end_date).
-// Рівно 5 статусів: future / active / frozen / finished / cancelled.
+// Статуси: future / active / frozen / finished / cancelled + pending ("Очікує оплати" —
+// абонемент учасника групи, який ще не вніс мінімальну оплату, див. min_paid_to_activate).
 // frozen/cancelled лишаються ручними станами (керуються діями freeze/cancel/restore).
 $EFFECTIVE_STATUS_SQL = "(CASE
     WHEN ci.status = 'cancelled' THEN 'cancelled'
     WHEN ci.status = 'frozen' THEN 'frozen'
+    WHEN ci.min_paid_to_activate IS NOT NULL AND ci.paid_amount < ci.min_paid_to_activate THEN 'pending'
     WHEN ci.start_date > CURDATE() THEN 'future'
     WHEN ci.end_date < CURDATE() THEN 'finished'
     WHEN ci.visits_total IS NOT NULL AND ci.visits_used >= ci.visits_total THEN 'finished'
@@ -68,6 +70,42 @@ function inv_requireCashShift(PDO $pdo, int $clubId, int $userId, bool $isOwner)
     if ((int)$shift['opened_by'] !== $userId)
         Response::error("Зараз відкрита зміна адміністратора «{$shift['opened_name']}». Ви не можете проводити операції в чужій зміні.", 403);
     return (int)$shift['id'];
+}
+
+// ── Хелпер: тип продажу (new / renewal / return) ─────────────
+function inv_saleType(PDO $pdo, int $clubId, int $clientId, string $effectiveStatusSql): string {
+    $st = $pdo->prepare("
+        SELECT
+            COUNT(*) AS total,
+            SUM({$effectiveStatusSql} IN ('active','frozen')) AS has_active
+        FROM client_invoices ci
+        WHERE ci.client_id = ? AND ci.club_id = ?
+    ");
+    $st->execute([$clientId, $clubId]);
+    $prev = $st->fetch();
+    if ((int)$prev['total'] === 0) return 'new';
+    return ((int)$prev['has_active'] > 0) ? 'renewal' : 'return';
+}
+
+// ── Хелпер: ім'я тренера клубу ───────────────────────────────
+function inv_trainerName(PDO $pdo, int $clubId, ?int $trainerId): ?string {
+    if (!$trainerId) return null;
+    $st = $pdo->prepare("
+        SELECT u.full_name FROM club_trainers ct
+        JOIN sys_users u ON u.id = ct.user_id
+        WHERE ct.id=? AND ct.club_id=? LIMIT 1
+    ");
+    $st->execute([$trainerId, $clubId]);
+    return $st->fetchColumn() ?: null;
+}
+
+// ── Хелпер: група абонементів клубу ──────────────────────────
+function inv_getGroup(PDO $pdo, int $clubId, int $groupId): array {
+    $st = $pdo->prepare("SELECT * FROM invoice_groups WHERE id=? AND club_id=? LIMIT 1");
+    $st->execute([$groupId, $clubId]);
+    $g = $st->fetch();
+    if (!$g) Response::error('Групу не знайдено', 404);
+    return $g;
 }
 
 // Trainer ID поточного юзера (для фільтра)
@@ -123,7 +161,7 @@ try { switch ($action) {
             $params[] = $like;
             $params[] = $like;
         }
-        if ($status && in_array($status, ['future','active','frozen','finished','cancelled'])) {
+        if ($status && in_array($status, ['future','active','pending','frozen','finished','cancelled'])) {
             $where[]  = "{$EFFECTIVE_STATUS_SQL} = ?";
             $params[] = $status;
         }
@@ -145,7 +183,7 @@ try { switch ($action) {
                 ci.visits_total, ci.visits_used,
                 {$EFFECTIVE_STATUS_SQL} AS status, ci.sale_type, ci.freeze_days, ci.freeze_start,
                 ci.trainer_id, ci.trainer_name, ci.admin_name,
-                ci.created_at,
+                ci.created_at, ci.group_id,
                 c.id   AS client_id,
                 c.full_name AS client_name,
                 c.phone     AS client_phone,
@@ -184,10 +222,12 @@ try { switch ($action) {
                    DATEDIFF(ci.end_date, CURDATE()) AS days_left,
                    {$EFFECTIVE_STATUS_SQL} AS status,
                    COALESCE(t.freeze_days_max, 0) AS tariff_freeze_max,
-                   COALESCE(t.freeze_days_min, 0) AS tariff_freeze_min
+                   COALESCE(t.freeze_days_min, 0) AS tariff_freeze_min,
+                   g.name AS group_name
             FROM client_invoices ci
             JOIN clients c ON c.id = ci.client_id
             LEFT JOIN tariffs t ON t.id = ci.tariff_id
+            LEFT JOIN invoice_groups g ON g.id = ci.group_id
             WHERE ci.id = ? AND ci.club_id = ?
               " . ($isTrainer ? "AND ci.trainer_id = {$myTrainerClubId}" : "") . "
             LIMIT 1
@@ -244,10 +284,13 @@ try { switch ($action) {
         if (!$client) Response::error('Клієнта не знайдено');
         if ($client['status'] === 'blocked') Response::error('Клієнт заблокований — продаж абонементів недоступний', 403);
 
-        // Борг по інших абонементах — продаж нового заборонено, поки не розрахований попередній
+        // Борг по інших абонементах — продаж нового заборонено, поки не розрахований попередній.
+        // Групові абонементи не враховуються: там несплачений абонемент просто не активується
+        // (min_paid_to_activate), а борг видно в картці групи.
         $debtStmt = $pdo->prepare("
             SELECT SUM(GREATEST(price - paid_amount, 0)) FROM client_invoices
             WHERE client_id = ? AND club_id = ? AND status IN ('active','frozen')
+              AND group_id IS NULL
         ");
         $debtStmt->execute([$clientId, $clubId]);
         $existingDebt = (float)($debtStmt->fetchColumn() ?: 0);
@@ -260,19 +303,7 @@ try { switch ($action) {
         // renewal — у клієнта Є попередній абонемент зі статусом active/frozen (ще не завершився);
         // return  — є попередні абонементи, але жоден зараз не active/frozen;
         // new     — попередніх абонементів немає взагалі.
-        $saleTypeStmt = $pdo->prepare("
-            SELECT
-                COUNT(*) AS total,
-                SUM({$EFFECTIVE_STATUS_SQL} IN ('active','frozen')) AS has_active
-            FROM client_invoices ci
-            WHERE ci.client_id = ? AND ci.club_id = ?
-        ");
-        $saleTypeStmt->execute([$clientId, $clubId]);
-        $prevInv = $saleTypeStmt->fetch();
-        $saleType = 'new';
-        if ((int)$prevInv['total'] > 0) {
-            $saleType = ((int)$prevInv['has_active'] > 0) ? 'renewal' : 'return';
-        }
+        $saleType = inv_saleType($pdo, $clubId, $clientId, $EFFECTIVE_STATUS_SQL);
 
         // Перевіряємо тариф
         $tariffStmt = $pdo->prepare("
@@ -392,6 +423,17 @@ try { switch ($action) {
         $visitsUsed  = (int)$inv['visits_used'];
 
         $tariffName = $tariff['name'];
+
+        // Абонемент учасника групи: тариф, дати і ціна спільні для всієї групи —
+        // тут змінюються лише тренер і нотатки (решта — в картці групи).
+        if (!empty($inv['group_id'])) {
+            $tariffId    = $inv['tariff_id'];
+            $tariffName  = $inv['tariff_name'];
+            $startDate   = $inv['start_date'];
+            $endDate     = $inv['end_date'];
+            $price       = (float)$inv['price'];
+            $visitsTotal = $inv['visits_total'];
+        }
 
         if ($trainerId && empty($tariff['has_trainer'])) {
             Response::error('Цей тариф не передбачає призначення тренера');
@@ -770,6 +812,356 @@ try { switch ($action) {
         ]);
 
 
+    // ════ ГРУПОВІ АБОНЕМЕНТИ ══════════════════════════════════
+    // Група = договір (тариф, спільні дати, ціна учасника, мінімальна оплата,
+    // ліміт місць). Кожен учасник має свій звичайний абонемент з group_id;
+    // він не діє, доки учасник не оплатив min_paid_to_activate.
+
+    case 'group_list':
+        if ($isTrainer) Response::forbidden();
+        $search = trim($input['search'] ?? '');
+        $status = ($input['status'] ?? 'active') === 'closed' ? 'closed' : 'active';
+
+        $where  = ['g.club_id = ?', 'g.status = ?'];
+        $params = [$clubId, $status];
+        if ($search !== '') {
+            $where[]  = '(g.name LIKE ? OR oc.full_name LIKE ?)';
+            $params[] = '%' . $search . '%';
+            $params[] = '%' . $search . '%';
+        }
+        $whereSQL = implode(' AND ', $where);
+
+        $stmt = $pdo->prepare("
+            SELECT g.id, g.name, g.tariff_id, g.tariff_name, g.start_date, g.end_date,
+                   g.member_price, g.min_payment, g.max_members, g.status, g.notes,
+                   g.owner_client_id, oc.full_name AS owner_name, oc.phone AS owner_phone,
+                   COUNT(ci.id)                                               AS members_count,
+                   COALESCE(SUM(ci.price), 0)                                  AS total_price,
+                   COALESCE(SUM(ci.paid_amount), 0)                            AS total_paid,
+                   COALESCE(SUM(ci.paid_amount >= COALESCE(ci.min_paid_to_activate, 0)), 0) AS activated_count
+            FROM invoice_groups g
+            LEFT JOIN clients oc ON oc.id = g.owner_client_id
+            LEFT JOIN client_invoices ci ON ci.group_id = g.id AND ci.status <> 'cancelled'
+            WHERE {$whereSQL}
+            GROUP BY g.id
+            ORDER BY g.start_date DESC, g.id DESC
+            LIMIT 200
+        ");
+        $stmt->execute($params);
+        Response::ok(['groups' => $stmt->fetchAll()]);
+
+
+    case 'group_get':
+        if ($isTrainer) Response::forbidden();
+        $groupId = (int)($input['id'] ?? 0);
+        $group = inv_getGroup($pdo, $clubId, $groupId);
+
+        $oc = $pdo->prepare("SELECT full_name, phone, balance FROM clients WHERE id=? AND club_id=?");
+        $oc->execute([(int)$group['owner_client_id'], $clubId]);
+        $owner = $oc->fetch() ?: null;
+
+        $mStmt = $pdo->prepare("
+            SELECT ci.id, ci.client_id, ci.price, ci.paid_amount, ci.min_paid_to_activate,
+                   ci.start_date, ci.end_date, ci.visits_total, ci.visits_used,
+                   ci.trainer_name, ci.freeze_days, ci.created_at,
+                   {$EFFECTIVE_STATUS_SQL} AS status,
+                   GREATEST(ci.price - ci.paid_amount, 0) AS debt,
+                   c.full_name AS client_name, c.phone AS client_phone, c.balance AS client_balance
+            FROM client_invoices ci
+            JOIN clients c ON c.id = ci.client_id
+            WHERE ci.group_id = ? AND ci.club_id = ?
+            ORDER BY (ci.status = 'cancelled'), c.full_name
+        ");
+        $mStmt->execute([$groupId, $clubId]);
+
+        Response::ok(['group' => $group, 'owner' => $owner, 'members' => $mStmt->fetchAll()]);
+
+
+    case 'group_create':
+        if (!Auth::can($sess, $clubId, 'invoices.sell')) Response::forbidden();
+        Billing::requireWriteAccess($clubId);
+
+        $name      = trim($input['name'] ?? '');
+        $tariffId  = (int)($input['tariff_id'] ?? 0);
+        $startDate = trim($input['start_date'] ?? date('Y-m-d'));
+        if ($name === '') Response::error('Вкажіть назву групи');
+        if (!$tariffId) Response::error('Оберіть тариф');
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $startDate)) Response::error('Невірна дата початку');
+
+        $tStmt = $pdo->prepare("SELECT * FROM tariffs WHERE id=? AND club_id=? AND is_active=1 LIMIT 1");
+        $tStmt->execute([$tariffId, $clubId]);
+        $tariff = $tStmt->fetch();
+        if (!$tariff) Response::error('Тариф не знайдено');
+
+        $endDate     = date('Y-m-d', strtotime($startDate . ' +' . ($tariff['duration_days'] - 1) . ' days'));
+        $memberPrice = isset($input['member_price']) && $input['member_price'] !== ''
+            ? max(0, round((float)$input['member_price'], 2)) : (float)$tariff['price'];
+        $minPayment  = isset($input['min_payment']) && $input['min_payment'] !== ''
+            ? max(0, round((float)$input['min_payment'], 2)) : $memberPrice;
+        if ($minPayment > $memberPrice) Response::error('Мінімальна оплата не може перевищувати вартість абонемента учасника');
+        $maxMembers  = (int)($input['max_members'] ?? 0) ?: null;
+        $ownerId     = (int)($input['owner_client_id'] ?? 0) ?: null;
+        if ($ownerId) {
+            $oc = $pdo->prepare("SELECT id FROM clients WHERE id=? AND club_id=?");
+            $oc->execute([$ownerId, $clubId]);
+            if (!$oc->fetchColumn()) Response::error('Контактну особу не знайдено');
+        }
+
+        $pdo->prepare("
+            INSERT INTO invoice_groups
+                (club_id, name, tariff_id, tariff_name, owner_client_id,
+                 start_date, end_date, member_price, min_payment, max_members,
+                 notes, created_by)
+            VALUES (?,?,?,?,?, ?,?,?,?,?, ?,?)
+        ")->execute([
+            $clubId, $name, $tariffId, $tariff['name'], $ownerId,
+            $startDate, $endDate, $memberPrice, $minPayment, $maxMembers,
+            trim($input['notes'] ?? '') ?: null, $userId,
+        ]);
+        Response::ok(['id' => (int)$pdo->lastInsertId()], 'Групу створено');
+
+
+    case 'group_update':
+        if (!Auth::can($sess, $clubId, 'invoices.sell')) Response::forbidden();
+        $groupId = (int)($input['id'] ?? 0);
+        $group   = inv_getGroup($pdo, $clubId, $groupId);
+
+        $name        = trim($input['name'] ?? $group['name']);
+        $memberPrice = max(0, round((float)($input['member_price'] ?? $group['member_price']), 2));
+        $minPayment  = max(0, round((float)($input['min_payment'] ?? $group['min_payment']), 2));
+        $maxMembers  = array_key_exists('max_members', $input) ? ((int)$input['max_members'] ?: null) : $group['max_members'];
+        $ownerId     = array_key_exists('owner_client_id', $input) ? ((int)$input['owner_client_id'] ?: null) : $group['owner_client_id'];
+        $status      = ($input['status'] ?? $group['status']) === 'closed' ? 'closed' : 'active';
+        $startDate   = trim($input['start_date'] ?? $group['start_date']);
+        $notes       = array_key_exists('notes', $input) ? (trim($input['notes']) ?: null) : $group['notes'];
+
+        if ($name === '') Response::error('Вкажіть назву групи');
+        if ($minPayment > $memberPrice) Response::error('Мінімальна оплата не може перевищувати вартість абонемента учасника');
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $startDate)) Response::error('Невірна дата початку');
+
+        $cnt = $pdo->prepare("SELECT COUNT(*) FROM client_invoices WHERE group_id=? AND status <> 'cancelled'");
+        $cnt->execute([$groupId]);
+        $membersCount = (int)$cnt->fetchColumn();
+        if ($maxMembers !== null && $membersCount > $maxMembers)
+            Response::error("У групі вже {$membersCount} учасників — ліміт не може бути меншим");
+
+        // Дати спільні для всіх: зміна дати початку зсуває абонементи всіх учасників,
+        // тому дозволена лише поки ніхто з групи не мав відвідувань.
+        $endDate = $group['end_date'];
+        $datesChanged = $startDate !== $group['start_date'];
+        if ($datesChanged) {
+            $v = $pdo->prepare("SELECT COUNT(*) FROM visits v JOIN client_invoices ci ON ci.id = v.invoice_id WHERE ci.group_id=?");
+            $v->execute([$groupId]);
+            if ((int)$v->fetchColumn() > 0) Response::error('Учасники групи вже мають відвідування — дату початку змінити не можна');
+            $days = (int)((strtotime($group['end_date']) - strtotime($group['start_date'])) / 86400);
+            $endDate = date('Y-m-d', strtotime($startDate . " +{$days} days"));
+        }
+
+        $pdo->beginTransaction();
+        try {
+            $pdo->prepare("
+                UPDATE invoice_groups SET
+                    name=?, member_price=?, min_payment=?, max_members=?, owner_client_id=?,
+                    status=?, start_date=?, end_date=?, notes=?
+                WHERE id=? AND club_id=?
+            ")->execute([
+                $name, $memberPrice, $minPayment, $maxMembers, $ownerId,
+                $status, $startDate, $endDate, $notes, $groupId, $clubId,
+            ]);
+            // Ціна і поріг активації — однакові для всіх учасників групи
+            $pdo->prepare("
+                UPDATE client_invoices SET price=?, min_paid_to_activate=?, trainer_narah_amount=?
+                WHERE group_id=? AND club_id=? AND status <> 'cancelled'
+            ")->execute([$memberPrice, $minPayment, $memberPrice, $groupId, $clubId]);
+            if ($datesChanged) {
+                $pdo->prepare("
+                    UPDATE client_invoices SET start_date=?, end_date=?
+                    WHERE group_id=? AND club_id=? AND status <> 'cancelled'
+                ")->execute([$startDate, $endDate, $groupId, $clubId]);
+            }
+            $pdo->commit();
+        } catch (Throwable $e) {
+            $pdo->rollBack();
+            Response::serverError($e->getMessage());
+        }
+        Response::ok([], 'Групу оновлено');
+
+
+    case 'group_add_members':
+        if (!Auth::can($sess, $clubId, 'invoices.sell')) Response::forbidden();
+        Billing::requireWriteAccess($clubId);
+
+        $groupId   = (int)($input['group_id'] ?? 0);
+        $group     = inv_getGroup($pdo, $clubId, $groupId);
+        if ($group['status'] !== 'active') Response::error('Група закрита — додавати учасників не можна');
+        if ($group['end_date'] < date('Y-m-d')) Response::error('Термін дії групи вже завершився');
+
+        $clientIds = array_values(array_unique(array_filter(array_map('intval', (array)($input['client_ids'] ?? [])))));
+        if (!$clientIds) Response::error('Оберіть учасників');
+
+        $tStmt = $pdo->prepare("SELECT * FROM tariffs WHERE id=? AND club_id=? LIMIT 1");
+        $tStmt->execute([(int)$group['tariff_id'], $clubId]);
+        $tariff = $tStmt->fetch() ?: [];
+
+        $trainerId   = (int)($input['trainer_id'] ?? 0) ?: null;
+        if ($trainerId && empty($tariff['has_trainer'])) Response::error('Цей тариф не передбачає призначення тренера');
+        $trainerName = inv_trainerName($pdo, $clubId, $trainerId);
+
+        // Ліміт місць
+        $cnt = $pdo->prepare("SELECT client_id FROM client_invoices WHERE group_id=? AND status <> 'cancelled'");
+        $cnt->execute([$groupId]);
+        $existing = array_map('intval', $cnt->fetchAll(PDO::FETCH_COLUMN));
+        $dupes = array_intersect($clientIds, $existing);
+        if ($dupes) Response::error('Деякі з обраних клієнтів уже є в цій групі');
+        if ($group['max_members'] !== null && count($existing) + count($clientIds) > (int)$group['max_members']) {
+            $free = max(0, (int)$group['max_members'] - count($existing));
+            Response::error("У групі залишилось місць: {$free}");
+        }
+
+        $cStmt = $pdo->prepare("SELECT id, full_name, status FROM clients WHERE id=? AND club_id=? LIMIT 1");
+        $clients = [];
+        foreach ($clientIds as $cid) {
+            $cStmt->execute([$cid, $clubId]);
+            $c = $cStmt->fetch();
+            if (!$c) Response::error('Клієнта не знайдено');
+            if ($c['status'] === 'blocked') Response::error("Клієнт «{$c['full_name']}» заблокований");
+            $clients[] = $c;
+        }
+
+        $created = [];
+        $pdo->beginTransaction();
+        try {
+            $ins = $pdo->prepare("
+                INSERT INTO client_invoices
+                    (club_id, client_id, tariff_id, tariff_name, group_id, min_paid_to_activate,
+                     price, paid_amount, start_date, end_date,
+                     visits_total, visits_used, status, sale_type,
+                     trainer_id, trainer_name, trainer_narah_type, trainer_narah_amount,
+                     admin_id, admin_name, created_by, notes)
+                VALUES (?,?,?,?,?,?, ?,0,?,?, ?,0,'active',?, ?,?,?,?, ?,?,?,?)
+            ");
+            foreach ($clients as $c) {
+                Billing::checkInvoiceLimit($clubId);
+                // Дати — спільні для всієї групи: учасник, що долучився пізніше,
+                // отримує ті самі start_date/end_date.
+                $ins->execute([
+                    $clubId, (int)$c['id'], $group['tariff_id'], $group['tariff_name'], $groupId, $group['min_payment'],
+                    $group['member_price'], $group['start_date'], $group['end_date'],
+                    ($tariff['visits_limit'] ?? null) ?: null,
+                    inv_saleType($pdo, $clubId, (int)$c['id'], $EFFECTIVE_STATUS_SQL),
+                    $trainerId, $trainerName, $tariff['narah_summ_type'] ?? null, $group['member_price'],
+                    $userId, $sess['full_name'] ?? null, $userId,
+                    "Група: {$group['name']}",
+                ]);
+                $created[] = (int)$pdo->lastInsertId();
+            }
+            $pdo->commit();
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $e;
+        }
+        Response::ok(['invoice_ids' => $created], 'Учасників додано: ' . count($created));
+
+
+    case 'group_remove_member':
+        if (!Auth::can($sess, $clubId, 'invoices.sell')) Response::forbidden();
+        $invoiceId = (int)($input['invoice_id'] ?? 0);
+        $st = $pdo->prepare("SELECT id, group_id FROM client_invoices WHERE id=? AND club_id=? AND group_id IS NOT NULL");
+        $st->execute([$invoiceId, $clubId]);
+        if (!$st->fetch()) Response::error('Учасника не знайдено');
+
+        // Прибрати можна лише "порожній" абонемент (без оплат і відвідувань).
+        // Інакше — через звичайне дострокове скасування абонемента (з історією).
+        $p = $pdo->prepare("SELECT (SELECT COUNT(*) FROM club_payments WHERE invoice_id=?) + (SELECT COUNT(*) FROM visits WHERE invoice_id=?)");
+        $p->execute([$invoiceId, $invoiceId]);
+        if ((int)$p->fetchColumn() > 0)
+            Response::error('Учасник уже має оплати або відвідування — скасуйте його абонемент у картці абонемента');
+
+        $pdo->prepare("DELETE FROM client_invoices WHERE id=? AND club_id=?")->execute([$invoiceId, $clubId]);
+        Response::ok([], 'Учасника прибрано з групи');
+
+
+    // Оплата учасників групи. payer_client_id:
+    //   0/порожньо — кожен платить за себе (депозит списується з депозиту учасника);
+    //   id клієнта — він платить за всіх обраних (депозит списується з його депозиту).
+    case 'group_pay':
+        if (!Auth::can($sess, $clubId, 'payments.create')) Response::forbidden();
+        $groupId = (int)($input['group_id'] ?? 0);
+        $group   = inv_getGroup($pdo, $clubId, $groupId);
+        $method  = trim($input['payment_method'] ?? 'cash');
+        $payerId = (int)($input['payer_client_id'] ?? 0) ?: null;
+        $skipFiscal = (bool)($input['manual_skip_fiscal'] ?? false);
+
+        $items = [];
+        foreach ((array)($input['items'] ?? []) as $it) {
+            $iid = (int)($it['invoice_id'] ?? 0);
+            $amt = round((float)($it['amount'] ?? 0), 2);
+            if ($iid && $amt > 0) $items[$iid] = $amt;
+        }
+        if (!$items) Response::error('Вкажіть суми оплати');
+
+        $payer = null;
+        if ($payerId) {
+            $ps = $pdo->prepare("SELECT id, full_name, balance FROM clients WHERE id=? AND club_id=?");
+            $ps->execute([$payerId, $clubId]);
+            $payer = $ps->fetch();
+            if (!$payer) Response::error('Платника не знайдено');
+        }
+
+        $invStmt = $pdo->prepare("
+            SELECT ci.id, ci.client_id, ci.price, ci.paid_amount, c.full_name, c.balance
+            FROM client_invoices ci JOIN clients c ON c.id = ci.client_id
+            WHERE ci.id=? AND ci.club_id=? AND ci.group_id=? AND ci.status <> 'cancelled'
+        ");
+        $rows = [];
+        $depositNeed = [];
+        foreach ($items as $iid => $amt) {
+            $invStmt->execute([$iid, $clubId, $groupId]);
+            $r = $invStmt->fetch();
+            if (!$r) Response::error('Абонемент учасника не знайдено в цій групі');
+            $left = round((float)$r['price'] - (float)$r['paid_amount'], 2);
+            if ($amt > $left + 0.001) Response::error("Сума для «{$r['full_name']}» більша за залишок ({$left} грн)");
+            $rows[] = $r + ['amount' => $amt];
+            $depKey = $payerId ?: (int)$r['client_id'];
+            $depositNeed[$depKey] = ($depositNeed[$depKey] ?? 0) + $amt;
+        }
+
+        // Депозит: у кого списуємо — у того має вистачати коштів
+        if ($method === 'deposit') {
+            $bs = $pdo->prepare("SELECT full_name, balance FROM clients WHERE id=? AND club_id=?");
+            foreach ($depositNeed as $cid => $need) {
+                $bs->execute([$cid, $clubId]);
+                $b = $bs->fetch();
+                if ((float)$b['balance'] + 0.001 < $need)
+                    Response::error("Недостатньо коштів на депозиті «{$b['full_name']}»: потрібно {$need} грн, є {$b['balance']} грн");
+            }
+        }
+
+        $shiftId = $method === 'cash' ? inv_requireCashShift($pdo, $clubId, $userId, $isOwner) : null;
+
+        $paymentIds = [];
+        $pdo->beginTransaction();
+        try {
+            foreach ($rows as $r) {
+                $note = "Група «{$group['name']}»" . ($payer ? ", оплатив(ла) {$payer['full_name']}" : '');
+                $paymentIds[] = [
+                    self_addPayment($pdo, $clubId, (int)$r['client_id'], (int)$r['id'],
+                        $r['amount'], $method, $sess, null, null, $note, $shiftId, $payerId),
+                    $r['amount'],
+                ];
+            }
+            $pdo->commit();
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $e;
+        }
+
+        foreach ($paymentIds as [$pid, $amt]) {
+            CheckboxService::maybeFiscalize($pdo, $clubId, $pid, $method, $amt, $group['tariff_name'], $skipFiscal);
+        }
+        Response::ok(['count' => count($paymentIds)], 'Оплату внесено');
+
+
     default:
         Response::error("Невідома дія: {$action}", 400);
 
@@ -791,7 +1183,8 @@ function self_addPayment(
     ?int   $trainerId,
     ?string $trainerName,
     ?string $notes = null,
-    ?int   $shiftId = null
+    ?int   $shiftId = null,
+    ?int   $depositClientId = null  // чий депозит списувати (платник за учасника групи); null = власник абонемента
 ): int {
     $pdo->prepare("
         INSERT INTO club_payments
@@ -811,15 +1204,16 @@ function self_addPayment(
     Recalc::cashflowSyncPayment($pdo, $paymentId);
 
     if ($method === 'deposit') {
+        $depClient = $depositClientId ?: $clientId;
         $pdo->prepare("
             INSERT INTO client_deposits
                 (club_id, client_id, amount, operation, invoice_id, admin_id, admin_name)
             VALUES (?,?,-?,'pay_invoice',?,?,?)
         ")->execute([
-            $clubId, $clientId, $amount,
+            $clubId, $depClient, $amount,
             $invoiceId, $sess['user_id'], $sess['full_name'] ?? null,
         ]);
-        Recalc::clientBalance($pdo, $clientId);
+        Recalc::clientBalance($pdo, $depClient);
     }
 
     // Примітка: оплата абонемента НЕ створює нарахування тренеру.

@@ -14,6 +14,7 @@ import ClientsPage from './pages/ClientsPage';
 import ClientCardPage from './pages/ClientCardPage';
 import InvoicesPage from './pages/InvoicesPage';
 import InvoiceCardPage from './pages/InvoiceCardPage';
+import InvoiceGroupCardPage from './pages/InvoiceGroupCardPage';
 import SaasPage from './pages/SaasPage';
 import SaasPaymentsPage from './pages/SaasPaymentsPage';
 import UsersPage from './pages/UsersPage';
@@ -114,6 +115,14 @@ export default function App() {
               element={
                 <ProtectedRoute permission="invoices.view">
                   <InvoiceCardPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/invoices/groups/:id"
+              element={
+                <ProtectedRoute permission="invoices.view">
+                  <InvoiceGroupCardPage />
                 </ProtectedRoute>
               }
             />

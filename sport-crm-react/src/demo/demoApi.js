@@ -176,6 +176,9 @@ function invoiceWithClient(s, inv) {
 }
 
 function handleInvoices(action, body, s) {
+  // Групові абонементи в демо не емулюються — порожній список замість помилки.
+  if (action === 'group_list') return ok({ groups: [] });
+  if (action.startsWith('group_')) return fail('Групові абонементи недоступні в демо-режимі');
   if (action === 'get_tariffs') {
     return ok({ tariffs: s.tariffs.filter((t) => t.is_active).map((t) => ({ id: t.id, name: t.name, price: t.price, duration_days: t.duration_days, visits_limit: t.visits_limit, description: t.description, has_trainer: !!t.has_trainer })) });
   }

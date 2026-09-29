@@ -21,6 +21,7 @@ import './InvoiceCardPage.css';
 const STATUS_MAP = {
   future: ['info', 'Майбутній'],
   active: ['active', 'Активний'],
+  pending: ['pending', 'Очікує оплати'],
   frozen: ['pending', 'Заморожений'],
   finished: ['inactive', 'Завершений'],
   cancelled: ['inactive', 'Скасований'],
@@ -32,6 +33,7 @@ const FISCAL_STATUS_LABELS = { pending: '⏳ В черзі', sent: '✅ Відп
 const VISIT_METHOD_LABELS = { barcode: '📷 Штрих-код', manual: '✎ Вручну', admin: '🛡 Адміністратор' };
 // Інфобокс під деталями абонементу — коротке пояснення поточного статусу.
 const INFO_BOX_BY_STATUS = {
+  pending:   { tone: 'warning', icon: 'alertTriangle', title: 'Очікує оплати',          text: 'Абонемент учасника групи почне діяти після внесення мінімальної оплати.' },
   finished:  { tone: 'muted',   icon: 'info',          title: 'Абонемент завершено',   text: 'Термін дії абонемента закінчився.' },
   frozen:    { tone: 'warning', icon: 'clock',         title: 'Абонемент заморожено',  text: 'Дні заморозки не враховуються у термін дії.' },
   cancelled: { tone: 'danger',  icon: 'alertTriangle', title: 'Абонемент скасовано',   text: 'Продаж було скасовано.' },
@@ -317,6 +319,8 @@ export default function InvoiceCardPage() {
   ];
   const infoRows = [
     ['cart', 'Тип продажу', <Badge key="sale-type" variant="info">{SALE_TYPE_LABELS[inv.sale_type] || 'Новий клієнт'}</Badge>],
+    inv.group_id ? ['users', 'Група', <Link key="group" to={`/invoices/groups/${inv.group_id}`}>{inv.group_name || `#${inv.group_id}`}</Link>] : null,
+    inv.group_id && inv.min_paid_to_activate != null ? ['card', 'Мін. оплата для активації', formatMoney(inv.min_paid_to_activate)] : null,
     inv.trainer_name ? ['user', 'Тренер', inv.trainer_name] : null,
     inv.freeze_days > 0 ? ['clock', 'Заморожено на', `${inv.freeze_days} дн. з ${formatDate(inv.freeze_start)}`] : null,
     ['briefcase', 'Менеджер', inv.admin_name || '—'],
@@ -830,14 +834,19 @@ export default function InvoiceCardPage() {
         {editInv && (
           <div>
             {editInv.error && <div className="alert alert-error">{editInv.error}</div>}
+            {inv.group_id && (
+              <div className="alert" style={{ marginBottom: 12, fontSize: 13 }}>
+                Це абонемент учасника групи — тариф, дати й ціна спільні для всієї групи і змінюються в картці групи.
+              </div>
+            )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 14px' }}>
               <FormGroup label="Тариф" fullWidth>
-                <select value={editInv.tariff_id} onChange={(e) => editTariffChange(e.target.value)}>
+                <select value={editInv.tariff_id} disabled={!!inv.group_id} onChange={(e) => editTariffChange(e.target.value)}>
                   {tariffs.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
               </FormGroup>
               <FormGroup label="Дата початку">
-                <input type="date" value={editInv.start_date} onChange={(e) => setEditInv({ ...editInv, start_date: e.target.value })} />
+                <input type="date" value={editInv.start_date} disabled={!!inv.group_id} onChange={(e) => setEditInv({ ...editInv, start_date: e.target.value })} />
               </FormGroup>
               <FormGroup label="Дата закінчення">
                 <input type="date" value={editInv.end_date} disabled />

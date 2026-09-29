@@ -96,10 +96,17 @@ class Recalc
      */
     public static function invoiceStatus(PDO $pdo, int $invoiceId): void
     {
-        $row = $pdo->prepare("SELECT paid_amount, price, status FROM client_invoices WHERE id = ?");
+        $row = $pdo->prepare("SELECT paid_amount, price, status, group_id FROM client_invoices WHERE id = ?");
         $row->execute([$invoiceId]);
         $inv = $row->fetch();
         if (!$inv) return;
+
+        // Абонемент учасника групи: активність визначає поріг min_paid_to_activate
+        // (див. Attendance::PAID_ENOUGH_SQL), часткова оплата — нормальний стан.
+        if (!empty($inv['group_id'])) {
+            self::unlockInvoiceTrainerEarnings($pdo, $invoiceId);
+            return;
+        }
 
         if ((float)$inv['paid_amount'] >= (float)$inv['price'] && $inv['status'] === 'cancelled') {
             $pdo->prepare("UPDATE client_invoices SET status = 'active' WHERE id = ?")->execute([$invoiceId]);

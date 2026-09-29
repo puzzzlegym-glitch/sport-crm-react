@@ -213,9 +213,17 @@ class Attendance
             FROM client_invoices ci
             WHERE ci.client_id = ? AND ci.club_id = ? AND ci.status = 'active'
               AND ci.start_date <= CURDATE() AND ci.end_date >= CURDATE()
+              AND " . self::PAID_ENOUGH_SQL . "
             ORDER BY ci.end_date ASC LIMIT 1
         ");
         $stmt->execute([$clientId, $clubId]);
         return $stmt->fetch() ?: null;
     }
+
+    /**
+     * Умова "абонемент оплачено достатньо, щоб він діяв" (для групових абонементів —
+     * мінімальна оплата учасника; у звичайних min_paid_to_activate = NULL).
+     * Використовувати з аліасом таблиці ci.
+     */
+    public const PAID_ENOUGH_SQL = "(ci.min_paid_to_activate IS NULL OR ci.paid_amount >= ci.min_paid_to_activate)";
 }

@@ -115,6 +115,7 @@ try {
                           AND ci.start_date <= CURDATE()
                           AND ci.end_date  >= CURDATE()
                           AND (ci.visits_total IS NULL OR ci.visits_used < ci.visits_total)
+                          AND (ci.min_paid_to_activate IS NULL OR ci.paid_amount >= ci.min_paid_to_activate)
                         ORDER BY ci.end_date DESC
                         LIMIT 1
                     ) AS active_tariff,
@@ -126,6 +127,7 @@ try {
                           AND ci.start_date <= CURDATE()
                           AND ci.end_date  >= CURDATE()
                           AND (ci.visits_total IS NULL OR ci.visits_used < ci.visits_total)
+                          AND (ci.min_paid_to_activate IS NULL OR ci.paid_amount >= ci.min_paid_to_activate)
                         ORDER BY ci.end_date DESC
                         LIMIT 1
                     ) AS tariff_end_date,

@@ -95,6 +95,7 @@ try { switch ($action) {
               AND ci.status    = 'active'
               AND ci.start_date <= CURDATE()
               AND ci.end_date >= CURDATE()
+              AND " . Attendance::PAID_ENOUGH_SQL . "
             ORDER BY ci.end_date ASC
             LIMIT 1
         ");
@@ -174,9 +175,10 @@ try { switch ($action) {
         // Якщо invoice не передано — беремо активний
         if (!$invoiceId) {
             $invStmt = $pdo->prepare("
-                SELECT id, trainer_id, trainer_name, visits_total, visits_used FROM client_invoices
-                WHERE client_id=? AND club_id=? AND status='active'
-                  AND start_date<=CURDATE() AND end_date>=CURDATE()
+                SELECT ci.id, ci.trainer_id, ci.trainer_name, ci.visits_total, ci.visits_used FROM client_invoices ci
+                WHERE ci.client_id=? AND ci.club_id=? AND ci.status='active'
+                  AND ci.start_date<=CURDATE() AND ci.end_date>=CURDATE()
+                  AND " . Attendance::PAID_ENOUGH_SQL . "
                 ORDER BY end_date ASC LIMIT 1
             ");
             $invStmt->execute([$clientId, $clubId]);
@@ -186,13 +188,16 @@ try { switch ($action) {
             $trainerName = $inv['trainer_name'] ?? null;
         } else {
             $invStmt = $pdo->prepare("
-                SELECT status, start_date, end_date, trainer_id, trainer_name, visits_total, visits_used
+                SELECT status, start_date, end_date, trainer_id, trainer_name, visits_total, visits_used,
+                       paid_amount, min_paid_to_activate
                 FROM client_invoices WHERE id=? AND club_id=?
             ");
             $invStmt->execute([$invoiceId, $clubId]);
             $inv = $invStmt->fetch();
-            if ($inv && ($inv['status'] !== 'active' || $inv['start_date'] > date('Y-m-d') || $inv['end_date'] < date('Y-m-d'))) {
-                $invoiceId = null; // абонемент заморожений/ще не розпочався/завершений/скасований — не використовуємо
+            $notPaidEnough = $inv && $inv['min_paid_to_activate'] !== null
+                && (float)$inv['paid_amount'] < (float)$inv['min_paid_to_activate'];
+            if ($inv && ($inv['status'] !== 'active' || $inv['start_date'] > date('Y-m-d') || $inv['end_date'] < date('Y-m-d') || $notPaidEnough)) {
+                $invoiceId = null; // абонемент заморожений/ще не розпочався/завершений/скасований/не оплачений (група) — не використовуємо
             }
             $trainerId   = $inv['trainer_id']   ?? null;
             $trainerName = $inv['trainer_name'] ?? null;
@@ -247,6 +252,7 @@ try { switch ($action) {
             FROM client_invoices ci
             WHERE ci.client_id=? AND ci.club_id=? AND ci.status='active'
               AND ci.start_date<=CURDATE() AND ci.end_date>=CURDATE()
+              AND " . Attendance::PAID_ENOUGH_SQL . "
             ORDER BY ci.end_date ASC LIMIT 1
         ");
         $stmt->execute([$clientId, $clubId]);
@@ -590,6 +596,21 @@ function self_noInvoiceMessage(PDO $pdo, int $clubId, int $clientId): array {
     $frozenId = $frozenStmt->fetchColumn();
     if ($frozenId) {
         return ['message' => 'Абонемент заморожений. Відвідування заборонено.', 'reason' => 'frozen', 'invoice_id' => (int)$frozenId];
+    }
+
+    // Абонемент учасника групи, який ще не вніс мінімальну оплату
+    $pendingStmt = $pdo->prepare("
+        SELECT id, min_paid_to_activate, paid_amount FROM client_invoices
+        WHERE client_id = ? AND club_id = ? AND status = 'active'
+          AND min_paid_to_activate IS NOT NULL AND paid_amount < min_paid_to_activate
+          AND end_date >= CURDATE()
+        ORDER BY start_date ASC LIMIT 1
+    ");
+    $pendingStmt->execute([$clientId, $clubId]);
+    $pending = $pendingStmt->fetch();
+    if ($pending) {
+        $left = (float)$pending['min_paid_to_activate'] - (float)$pending['paid_amount'];
+        return ['message' => 'Груповий абонемент не активовано: потрібно внести ще ' . number_format($left, 0, '.', ' ') . ' грн. Відвідування заборонено.', 'reason' => 'pending', 'invoice_id' => (int)$pending['id']];
     }
 
     $futureStmt = $pdo->prepare("
