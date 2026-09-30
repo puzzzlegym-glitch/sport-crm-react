@@ -74,6 +74,8 @@ export default function BookingSettingsTab({ setup, onChanged }) {
       require_invoice: rules.require_invoice ? 1 : 0,
       personal_slot_step_min: parseInt(rules.personal_slot_step_min) || 60,
       generate_weeks: parseInt(rules.generate_weeks) || 4,
+      reminder_1_hours: Math.max(0, parseInt(rules.reminder_1_hours) || 0),
+      reminder_2_hours: Math.max(0, parseInt(rules.reminder_2_hours) || 0),
     }), () => setRules(null));
   }
 
@@ -148,6 +150,7 @@ export default function BookingSettingsTab({ setup, onChanged }) {
           <span>Скасувати можна не пізніше ніж за <strong>{cancelH / 60} год</strong></span>
           <span>Лист очікування: <strong>{settings.waitlist_enabled ? 'так' : 'ні'}</strong></span>
           <span>Самозапис лише з абонементом: <strong>{settings.require_invoice ? 'так' : 'ні'}</strong></span>
+          <span>Нагадування в Telegram: <strong>{[settings.reminder_1_hours, settings.reminder_2_hours].filter((h) => h > 0).map((h) => `за ${h} год`).join(' і ') || 'вимкнено'}</strong></span>
         </div>
       </div>
 
@@ -254,6 +257,13 @@ export default function BookingSettingsTab({ setup, onChanged }) {
             <FormGroup label="Будувати розклад на (тижнів)">
               <input type="number" min="1" max="26" value={rules.generate_weeks} onChange={(e) => setRules({ ...rules, generate_weeks: e.target.value })} />
             </FormGroup>
+            <FormGroup label="Нагадування 1 (год до початку)">
+              <input type="number" min="0" max="168" value={rules.reminder_1_hours} onChange={(e) => setRules({ ...rules, reminder_1_hours: e.target.value })} />
+            </FormGroup>
+            <FormGroup label="Нагадування 2 (год до початку)">
+              <input type="number" min="0" max="168" value={rules.reminder_2_hours} onChange={(e) => setRules({ ...rules, reminder_2_hours: e.target.value })} />
+            </FormGroup>
+            <div style={{ ...muted, gridColumn: '1/-1', marginTop: -6, marginBottom: 10 }}>Нагадування клієнтам у Telegram-бот (0 — вимкнено).</div>
             <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, gridColumn: '1/-1', marginBottom: 8 }}>
               <input type="checkbox" checked={!!rules.waitlist_enabled} onChange={(e) => setRules({ ...rules, waitlist_enabled: e.target.checked })} />
               Лист очікування (коли місць немає; звільнене місце отримує перший у черзі)

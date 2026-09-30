@@ -19,6 +19,8 @@
  *                    прив'язка клієнта за збігом з clients.phone_normalized, без токена
  *   "Мій абонемент" — статус активного абонемента по кожному прив'язаному клубу (клієнт)
  *   "Історія відвідувань" — останні 5 відвідувань по кожному прив'язаному клубу (клієнт)
+ *   "Розклад" / "Мої записи" + inline-кнопки (callback_query) — самозапис на тренування,
+ *                    скасування, лист очікування, персональні тренування (BookingBot.php)
  *   Reply на повідомлення про звернення підтримки — персонал (SuperAdmin/власник клубу)
  *   продовжує переписку прямо в Telegram, без входу в CRM (Support::postMessage, див.
  *   self_handleSupportReply нижче); будь-який інший текст від персоналу — просте
@@ -39,7 +41,18 @@ $update  = json_decode(file_get_contents('php://input'), true) ?? [];
 $pdo     = Database::get();
 $message = $update['message'] ?? null;
 
-// Ігноруємо edited_message/callback_query/інші типи update — Telegram все одно
+// Натискання inline-кнопок запису на тренування
+if (isset($update['callback_query'])) {
+    try {
+        BookingBot::onCallback($pdo, $update['callback_query']);
+    } catch (Throwable $e) {
+        error_log('[TelegramWebhook] callback: ' . $e->getMessage());
+    }
+    http_response_code(200);
+    exit;
+}
+
+// Ігноруємо edited_message/інші типи update — Telegram все одно
 // очікує 200, інакше почне ретраїти доставку.
 if (!$message) { http_response_code(200); exit; }
 
@@ -59,6 +72,10 @@ try {
     } elseif (str_starts_with($text, '/start')) {
         $parts = explode(' ', $text, 2);
         self_handleStart($pdo, $chatId, trim($parts[1] ?? ''));
+    } elseif (str_contains(mb_strtolower($text), 'розклад') || str_contains(mb_strtolower($text), 'записатис')) {
+        BookingBot::onMenu($pdo, $chatId, 'schedule');
+    } elseif (str_contains(mb_strtolower($text), 'мої записи')) {
+        BookingBot::onMenu($pdo, $chatId, 'my');
     } elseif (str_contains(mb_strtolower($text), 'абонемент')) {
         self_replyMembership($pdo, $chatId);
     } elseif (str_contains(mb_strtolower($text), 'відвідуван')) {
@@ -252,10 +269,10 @@ function self_replyMenu(PDO $pdo, string $chatId): void
 function self_keyboard(): array
 {
     return [
-        'keyboard' => [[
-            ['text' => '📋 Мій абонемент'],
-            ['text' => '📅 Історія відвідувань'],
-        ]],
+        'keyboard' => [
+            [['text' => BookingBot::BTN_SCHEDULE], ['text' => BookingBot::BTN_MY]],
+            [['text' => '📋 Мій абонемент'], ['text' => '🕘 Історія відвідувань']],
+        ],
         'resize_keyboard' => true,
     ];
 }

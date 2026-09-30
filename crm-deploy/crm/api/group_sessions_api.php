@@ -267,11 +267,16 @@ case 'cancel':
     if (!$session) Response::error('Заняття не знайдено', 404);
     if ($session['status'] === 'completed') Response::error('Завершене заняття скасувати не можна', 409);
 
+    $affected = $pdo->prepare("SELECT client_id FROM group_session_clients WHERE session_id=? AND status IN ('booked','waitlist')");
+    $affected->execute([$sessionId]);
+    $affectedIds = $affected->fetchAll(PDO::FETCH_COLUMN);
+
     $pdo->prepare("UPDATE group_sessions SET status='canceled' WHERE id=?")->execute([$sessionId]);
     $pdo->prepare("
         UPDATE group_session_clients SET status='canceled', canceled_at=NOW(), canceled_by='club'
         WHERE session_id=? AND status IN ('booked','waitlist')
     ")->execute([$sessionId]);
+    BookingBot::notifySessionCanceled($pdo, $sessionId, $affectedIds);
     Response::ok([], 'Заняття скасовано');
 
 

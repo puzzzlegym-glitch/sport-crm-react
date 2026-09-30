@@ -14,7 +14,8 @@
 --   class_type_tariffs     — які тарифи дають право запису (порожньо = будь-який);
 --   schedule_templates     — повторюваний щотижневий розклад → заняття генеруються;
 --   trainer_availability   — робочі години тренера для персональних тренувань;
---   club_booking_settings  — правила запису/скасування клубу.
+--   club_booking_settings  — правила запису/скасування клубу + нагадування;
+--   booking_reminders_log  — які нагадування вже надіслано (без повторів).
 --
 -- Логіка — app/core/Booking.php (єдине ядро для CRM, Telegram-бота і застосунку).
 --
@@ -101,6 +102,8 @@ CREATE TABLE IF NOT EXISTS club_booking_settings (
     require_invoice         TINYINT(1) NOT NULL DEFAULT 1, -- для самозапису потрібен діючий абонемент
     personal_slot_step_min  INT NOT NULL DEFAULT 60,   -- крок вільних годин для персональних
     generate_weeks          INT NOT NULL DEFAULT 4,    -- на скільки тижнів наперед будувати розклад
+    reminder_1_hours        INT NOT NULL DEFAULT 24,   -- перше нагадування в Telegram за N год (0 = вимкнено)
+    reminder_2_hours        INT NOT NULL DEFAULT 2,    -- друге нагадування за N год (0 = вимкнено)
     updated_at              DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -119,3 +122,11 @@ ALTER TABLE group_session_clients
   ADD COLUMN source VARCHAR(20) NOT NULL DEFAULT 'admin' AFTER status,
   ADD COLUMN canceled_at DATETIME NULL AFTER checked_in_at,
   ADD COLUMN canceled_by VARCHAR(20) NULL AFTER canceled_at;
+
+-- 8) Журнал нагадувань про заняття (Telegram) — щоб не надсилати повторно ------
+CREATE TABLE IF NOT EXISTS booking_reminders_log (
+    roster_id  INT NOT NULL,
+    kind       VARCHAR(10) NOT NULL,      -- 'r1' / 'r2'
+    sent_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (roster_id, kind)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

@@ -13,6 +13,7 @@
  *   save_settings          — зберегти глобальні налаштування (SuperAdmin)
  *   get_stats             — статистика прив'язки (по клубу, або по всіх клубах для SuperAdmin поза клубом)
  *   cron_send_reminders  — щоденний крон: нагадування про закінчення абонемента (публічна, секретний ключ)
+ *   cron_booking_reminders — крон кожні 10–15 хв: нагадування про запис на заняття (публічна, секретний ключ)
  */
 
 require_once dirname(__DIR__, 2) . '/app/bootstrap.php';
@@ -25,7 +26,7 @@ $action = $_GET['action'] ?? $input['action'] ?? '';
 $pdo    = Database::get();
 
 // Публічні дії — не потребують авторизації
-$publicActions = ['cron_send_reminders'];
+$publicActions = ['cron_send_reminders', 'cron_booking_reminders'];
 
 if (!in_array($action, $publicActions)) {
     $sess = Auth::requireAuth();
@@ -281,6 +282,20 @@ try { switch ($action) {
         }
 
         echo json_encode(['ok' => true, 'sent' => $sent]);
+        exit;
+
+
+    // ════ КРОН: НАГАДУВАННЯ ПРО ЗАПИС НА ЗАНЯТТЯ ═══════════════
+    // Виклик кожні 10–15 хв: GET /api/telegram_api.php?action=cron_booking_reminders&key=...
+    // Години нагадувань — у правилах запису клубу (club_booking_settings.reminder_1/2_hours).
+    case 'cron_booking_reminders':
+        $key = $_GET['key'] ?? '';
+        if (!defined('CRON_SECRET') || !hash_equals(CRON_SECRET, $key)) {
+            http_response_code(403);
+            echo 'Forbidden';
+            exit;
+        }
+        echo json_encode(['ok' => true, 'sent' => BookingBot::sendReminders($pdo)]);
         exit;
 
 

@@ -22,6 +22,8 @@ class Booking
         'require_invoice'         => 1,
         'personal_slot_step_min'  => 60,
         'generate_weeks'          => 4,
+        'reminder_1_hours'        => 24,
+        'reminder_2_hours'        => 2,
     ];
 
     /** Кінець заняття: end_time або start_time + 60 хв (старі заняття без end_time). */
@@ -46,6 +48,8 @@ class Booking
         $s['book_ahead_days']        = max(1, min(365, $s['book_ahead_days']));
         $s['personal_slot_step_min'] = max(5, min(240, $s['personal_slot_step_min']));
         $s['generate_weeks']         = max(1, min(26, $s['generate_weeks']));
+        $s['reminder_1_hours']       = min(168, $s['reminder_1_hours']);
+        $s['reminder_2_hours']       = min(168, $s['reminder_2_hours']);
         $s['waitlist_enabled']       = $s['waitlist_enabled'] ? 1 : 0;
         $s['require_invoice']        = $s['require_invoice'] ? 1 : 0;
 
