@@ -29,6 +29,22 @@ if (!$clubId) Response::error('Не обрано клуб', 400);
 
 Auth::requireClubAccess($sess, $clubId, 50);
 
+// Тариф «з тренером» має чітку кількість занять з тренером (решта — групові/самостійні):
+//   тариф на N відвідувань → trainer_sessions ≤ N (порожньо = усі N з тренером);
+//   безлімітний → trainer_sessions обов'язково (інакше тренера призначити неможливо).
+function tariff_trainerSessions(array $input): ?int {
+    $hasTrainer  = !empty($input['has_trainer']);
+    $visitsLimit = ($input['visits_limit'] ?? '') !== '' && $input['visits_limit'] !== null ? (int)$input['visits_limit'] : null;
+    if (!$hasTrainer) return null;
+    $ts = (int)($input['trainer_sessions'] ?? 0);
+    if ($visitsLimit) {
+        if ($ts > $visitsLimit) Response::error("Занять з тренером не може бути більше, ніж усього відвідувань ({$visitsLimit})");
+        return $ts > 0 ? $ts : null; // null = усі відвідування з тренером
+    }
+    if ($ts <= 0) Response::error('Для безлімітного тарифу з тренером вкажіть кількість занять з тренером');
+    return $ts;
+}
+
 try { switch ($action) {
 
     // ════ СПИСОК ТАРИФІВ ═════════════════════════════════════
@@ -41,7 +57,7 @@ try { switch ($action) {
                 t.visits_limit, t.price, t.description,
                 t.color, t.is_active, t.sort_order,
                 t.freeze_days_max, t.freeze_days_min, t.prolong_sum,
-                t.has_trainer, t.earn_release_trigger,
+                t.has_trainer, t.trainer_sessions, t.earn_release_trigger,
                 t.created_at,
                 COUNT(ci.id)          AS usage_total,
                 SUM(ci.status='active') AS usage_active
@@ -107,8 +123,8 @@ try { switch ($action) {
                 (club_id, name, category, duration_days, visits_limit,
                  price, description, color, sort_order,
                  freeze_days_max, freeze_days_min, prolong_sum,
-                 has_trainer, earn_release_trigger)
-            VALUES (?,?,?,?,?, ?,?,?,?, ?,?,?, ?,?)
+                 has_trainer, trainer_sessions, earn_release_trigger)
+            VALUES (?,?,?,?,?, ?,?,?,?, ?,?,?, ?,?,?)
         ")->execute([
             $clubId,
             $name,
@@ -125,6 +141,7 @@ try { switch ($action) {
             $freezeMin,
             max(0, (float)($input['prolong_sum']   ?? 0)),
             (int)(bool)($input['has_trainer'] ?? 0),
+            tariff_trainerSessions($input),
             $earnTrigger,
         ]);
 
@@ -167,6 +184,7 @@ try { switch ($action) {
                 freeze_days_min  = ?,
                 prolong_sum      = ?,
                 has_trainer      = ?,
+                trainer_sessions = ?,
                 earn_release_trigger = ?
             WHERE id = ? AND club_id = ?
         ")->execute([
@@ -184,6 +202,7 @@ try { switch ($action) {
             $freezeMin,
             max(0, (float)($input['prolong_sum']   ?? 0)),
             (int)(bool)($input['has_trainer'] ?? 0),
+            tariff_trainerSessions($input),
             $earnTrigger,
             $id, $clubId,
         ]);

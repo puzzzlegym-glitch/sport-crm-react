@@ -14,7 +14,7 @@ const EMPTY_FORM = {
   id: null,
   name: '', price: '', duration_days: 30, visits_limit: '',
   category: '', color: '#4f9cf9', freeze_days_max: 0, freeze_days_min: 0, prolong_sum: 0,
-  has_trainer: false, earn_release_trigger: 'on_each_visit', sort_order: 0, description: '',
+  has_trainer: false, trainer_sessions: '', earn_release_trigger: 'on_each_visit', sort_order: 0, description: '',
 };
 
 export default function TariffsPage() {
@@ -64,6 +64,7 @@ export default function TariffsPage() {
       freeze_days_min: t.freeze_days_min || 0,
       prolong_sum: t.prolong_sum || 0,
       has_trainer: !!t.has_trainer,
+      trainer_sessions: t.trainer_sessions ?? '',
       earn_release_trigger: t.earn_release_trigger || 'on_each_visit',
       sort_order: t.sort_order || 0,
       description: t.description || '',
@@ -75,6 +76,12 @@ export default function TariffsPage() {
     if (!form.name.trim()) {
       setError("Назва обов'язкова");
       return;
+    }
+    if (form.has_trainer) {
+      const ts = parseInt(form.trainer_sessions) || 0;
+      const vl = form.visits_limit !== '' ? parseInt(form.visits_limit) : null;
+      if (!vl && ts <= 0) { setError('Для безлімітного тарифу з тренером вкажіть кількість занять з тренером'); return; }
+      if (vl && ts > vl) { setError(`Занять з тренером не може бути більше, ніж усього відвідувань (${vl})`); return; }
     }
     const freezeMax = parseInt(form.freeze_days_max) || 0;
     const freezeMin = parseInt(form.freeze_days_min) || 0;
@@ -96,6 +103,7 @@ export default function TariffsPage() {
       freeze_days_min: freezeMin,
       prolong_sum: parseFloat(form.prolong_sum) || 0,
       has_trainer: form.has_trainer ? 1 : 0,
+      trainer_sessions: form.has_trainer && form.trainer_sessions !== '' ? parseInt(form.trainer_sessions) : null,
       earn_release_trigger: form.earn_release_trigger,
       sort_order: parseInt(form.sort_order) || 0,
       description: form.description.trim(),
@@ -145,7 +153,16 @@ export default function TariffsPage() {
       },
     },
     { key: 'visits', label: 'Відвідувань', render: (t) => t.visits_limit || 'безліміт' },
-    { key: 'narah', label: 'Тренер', render: (t) => (t.has_trainer ? <Badge variant="active">З тренером</Badge> : '—') },
+    {
+      key: 'narah', label: 'Тренер',
+      render: (t) => {
+        if (!t.has_trainer) return '—';
+        const ts = t.trainer_sessions || t.visits_limit;
+        return ts
+          ? <Badge variant="active">З тренером · {ts} зан.</Badge>
+          : <Badge variant="inactive">⚠ Не вказано к-сть занять з тренером</Badge>;
+      },
+    },
     {
       key: 'sold',
       label: 'Продано',
@@ -242,6 +259,21 @@ export default function TariffsPage() {
                 Цей тариф передбачає тренера
               </label>
             </FormGroup>
+            {form.has_trainer && (
+              <FormGroup label={form.visits_limit === '' ? 'Занять з тренером *' : 'З них занять з тренером'}>
+                <input
+                  type="number" min="1" step="1"
+                  placeholder={form.visits_limit === '' ? 'обов\'язково для безліміту' : `порожньо = усі ${form.visits_limit}`}
+                  value={form.trainer_sessions}
+                  onChange={(e) => setForm({ ...form, trainer_sessions: e.target.value })}
+                />
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                  {form.visits_limit === ''
+                    ? 'Безлімітний тариф без кількості занять з тренером не можна прив\'язати до тренера.'
+                    : 'Решта відвідувань — групові / самостійні (без персонального тренера).'}
+                </div>
+              </FormGroup>
+            )}
             {form.has_trainer && (
               <FormGroup label="Коли тренер отримує нарахування">
                 <select value={form.earn_release_trigger} onChange={(e) => setForm({ ...form, earn_release_trigger: e.target.value })}>

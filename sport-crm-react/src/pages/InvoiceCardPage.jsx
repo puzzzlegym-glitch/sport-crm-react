@@ -39,6 +39,8 @@ const INFO_BOX_BY_STATUS = {
   cancelled: { tone: 'danger',  icon: 'alertTriangle', title: 'Абонемент скасовано',   text: 'Продаж було скасовано.' },
 };
 
+const trainerAllowed = (t) => !!t?.has_trainer && !!(t.trainer_sessions || t.visits_limit);
+
 const TABS = [
   { key: 'overview', label: 'Огляд' },
   { key: 'payments', label: 'Платежі' },
@@ -136,7 +138,7 @@ export default function InvoiceCardPage() {
         next.end_date = localDate(d);
         next.price = t.price;
         next.visits_total = t.visits_limit ?? '';
-        if (!t.has_trainer) next.trainer_id = '';
+        if (!trainerAllowed(t)) next.trainer_id = '';
       }
       return next;
     });
@@ -306,7 +308,7 @@ export default function InvoiceCardPage() {
   const freezeDaysMax = inv.tariff_freeze_max > 0 ? inv.tariff_freeze_max : 90;
 
   const editTariff = editInv ? tariffs.find((t) => String(t.id) === String(editInv.tariff_id)) : null;
-  const editHasTrainer = !!editTariff?.has_trainer;
+  const editHasTrainer = trainerAllowed(editTariff);
   const renewTariff = renew ? tariffs.find((t) => String(t.id) === String(renew.tariffId)) : null;
 
   const detailRows = [
@@ -316,6 +318,7 @@ export default function InvoiceCardPage() {
     ['card', 'Оплачено', formatMoney(paid)],
     ['alertTriangle', 'Борг', debt > 0.01 ? <span key="debt" className="icard-detail-debt">{formatMoney(debt)}</span> : '0 грн'],
     ['users', 'Відвідування', inv.visits_total ? `${inv.visits_used} / ${inv.visits_total}` : 'Безліміт'],
+    ...(inv.trainer_sessions_total ? [['dumbbell', 'З тренером', `${inv.trainer_sessions_used ?? 0} / ${inv.trainer_sessions_total}`]] : []),
   ];
   const infoRows = [
     ['cart', 'Тип продажу', <Badge key="sale-type" variant="info">{SALE_TYPE_LABELS[inv.sale_type] || 'Новий клієнт'}</Badge>],
@@ -755,7 +758,7 @@ export default function InvoiceCardPage() {
                 </div>
               )}
             </FormGroup>
-            {renewTariff?.has_trainer && (
+            {trainerAllowed(renewTariff) && (
               <FormGroup label="Тренер (рекомендований)">
                 <select value={renew.trainerId} onChange={(e) => setRenew({ ...renew, trainerId: e.target.value })}>
                   <option value="">— Без тренера —</option>

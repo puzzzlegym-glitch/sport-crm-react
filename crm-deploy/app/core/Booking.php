@@ -109,7 +109,11 @@ class Booking
     {
         $allowed = self::allowedTariffIds($pdo, (int)($session['class_type_id'] ?? 0));
         $st = $pdo->prepare("
-            SELECT ci.id, ci.tariff_id, ci.tariff_name, ci.visits_total, ci.visits_used,
+            SELECT ci.id, ci.tariff_id, ci.tariff_name, ci.visits_total, ci.visits_used, ci.trainer_sessions_total,
+                   (SELECT COUNT(*) FROM group_session_clients b2
+                    JOIN group_sessions bs2 ON bs2.id = b2.session_id
+                    WHERE b2.invoice_id = ci.id AND b2.status = 'booked' AND bs2.kind = 'personal'
+                      AND bs2.status = 'scheduled' AND bs2.id <> ?) AS personal_ahead,
                    (SELECT COUNT(*) FROM group_session_clients b
                     JOIN group_sessions bs ON bs.id = b.session_id
                     WHERE b.invoice_id = ci.id AND b.status = 'booked'
@@ -121,9 +125,14 @@ class Booking
             ORDER BY ci.end_date ASC
         ");
         $d = $session['session_date'];
-        $st->execute([(int)($session['id'] ?? 0), $clientId, $clubId, $d, $d]);
+        $st->execute([(int)($session['id'] ?? 0), (int)($session['id'] ?? 0), $clientId, $clubId, $d, $d]);
         foreach ($st->fetchAll() as $inv) {
             if ($allowed && !in_array((int)$inv['tariff_id'], $allowed, true)) continue;
+            // Персональне заняття — лише в межах занять з тренером (змішаний тариф / безліміт)
+            if (($session['kind'] ?? 'group') === 'personal' && ($inv['trainer_sessions_total'] || $inv['visits_total'] === null)) {
+                if (!$inv['trainer_sessions_total']) continue;
+                if (Attendance::trainerSessionsUsed($pdo, (int)$inv['id']) + (int)$inv['personal_ahead'] >= (int)$inv['trainer_sessions_total']) continue;
+            }
             if ($inv['visits_total'] !== null
                 && (int)$inv['visits_used'] + (int)$inv['booked_ahead'] >= (int)$inv['visits_total']) continue;
             return $inv;

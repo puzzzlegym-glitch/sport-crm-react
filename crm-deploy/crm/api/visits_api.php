@@ -87,7 +87,10 @@ try { switch ($action) {
         $invStmt = $pdo->prepare("
             SELECT ci.id, ci.tariff_name, ci.end_date,
                    ci.visits_total, ci.visits_used,
-                   ci.trainer_id, ci.trainer_name,
+                   -- Тренер підставляється автоматично лише коли ВСІ заняття абонемента з тренером
+                   -- (пакет персональних). Безліміт/змішаний тариф: прохід по картці — звичайний візит.
+                   IF(ci.visits_total IS NOT NULL AND (ci.trainer_sessions_total IS NULL OR ci.trainer_sessions_total >= ci.visits_total), ci.trainer_id, NULL)   AS trainer_id,
+                   IF(ci.visits_total IS NOT NULL AND (ci.trainer_sessions_total IS NULL OR ci.trainer_sessions_total >= ci.visits_total), ci.trainer_name, NULL) AS trainer_name,
                    DATEDIFF(ci.end_date, CURDATE()) AS days_left
             FROM client_invoices ci
             WHERE ci.client_id = ?
@@ -175,7 +178,7 @@ try { switch ($action) {
         // Якщо invoice не передано — беремо активний
         if (!$invoiceId) {
             $invStmt = $pdo->prepare("
-                SELECT ci.id, ci.trainer_id, ci.trainer_name, ci.visits_total, ci.visits_used FROM client_invoices ci
+                SELECT ci.id, ci.trainer_id, ci.trainer_name, ci.visits_total, ci.visits_used, ci.trainer_sessions_total FROM client_invoices ci
                 WHERE ci.client_id=? AND ci.club_id=? AND ci.status='active'
                   AND ci.start_date<=CURDATE() AND ci.end_date>=CURDATE()
                   AND " . Attendance::PAID_ENOUGH_SQL . "
@@ -184,8 +187,11 @@ try { switch ($action) {
             $invStmt->execute([$clientId, $clubId]);
             $inv = $invStmt->fetch();
             $invoiceId   = $inv['id']           ?? null;
-            $trainerId   = $inv['trainer_id']   ?? null;
-            $trainerName = $inv['trainer_name'] ?? null;
+            // Авто-тренер лише для пакета, де всі заняття з тренером; інакше тренера обирають явно
+            $allWithTrainer = $inv && $inv['visits_total'] !== null
+                && ($inv['trainer_sessions_total'] === null || (int)$inv['trainer_sessions_total'] >= (int)$inv['visits_total']);
+            $trainerId   = $allWithTrainer ? ($inv['trainer_id']   ?? null) : null;
+            $trainerName = $allWithTrainer ? ($inv['trainer_name'] ?? null) : null;
         } else {
             $invStmt = $pdo->prepare("
                 SELECT status, start_date, end_date, trainer_id, trainer_name, visits_total, visits_used,
@@ -219,6 +225,11 @@ try { switch ($action) {
                 $trainerId   = $overrideTrainerId;
                 $trainerName = $overrideName;
             }
+        }
+
+        // Заняття з тренером за безлімітним абонементом — лише в межах кількості занять з тренером
+        if ($invoiceId && $trainerId && ($tsErr = Attendance::trainerSessionError($pdo, (int)$invoiceId))) {
+            Response::error($tsErr, 409);
         }
 
         $force = !empty($input['force']) && $isOwner;

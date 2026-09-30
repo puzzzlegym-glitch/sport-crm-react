@@ -87,6 +87,19 @@ function inv_saleType(PDO $pdo, int $clubId, int $clientId, string $effectiveSta
     return ((int)$prev['has_active'] > 0) ? 'renewal' : 'return';
 }
 
+// ── Хелпер: скільки занять з тренером дає тариф (null = тренера призначати не можна) ──
+// Тариф на N відвідувань → N; безлімітний → tariffs.trainer_sessions (обов'язково).
+function inv_trainerSessions(array $tariff): ?int {
+    if (empty($tariff['has_trainer'])) return null;
+    if (!empty($tariff['trainer_sessions'])) return (int)$tariff['trainer_sessions']; // змішаний тариф / безліміт
+    return !empty($tariff['visits_limit']) ? (int)$tariff['visits_limit'] : null;    // усі N — з тренером
+}
+function inv_assertTrainerAllowed(array $tariff): void {
+    if (empty($tariff['has_trainer'])) Response::error('Цей тариф не передбачає призначення тренера');
+    if (inv_trainerSessions($tariff) === null)
+        Response::error('Безлімітний тариф без кількості занять з тренером не можна прив\'язати до тренера. Вкажіть «Занять з тренером» у тарифі.');
+}
+
 // ── Хелпер: ім'я тренера клубу ───────────────────────────────
 function inv_trainerName(PDO $pdo, int $clubId, ?int $trainerId): ?string {
     if (!$trainerId) return null;
@@ -125,7 +138,8 @@ try { switch ($action) {
                    price, description, color,
                    COALESCE(freeze_days_max, 0)   AS freeze_days_max,
                    COALESCE(prolong_sum, 0)        AS prolong_sum,
-                   COALESCE(has_trainer, 0)        AS has_trainer
+                   COALESCE(has_trainer, 0)        AS has_trainer,
+                   trainer_sessions
             FROM tariffs
             WHERE club_id = ? AND is_active = 1
             ORDER BY sort_order, name
@@ -246,6 +260,7 @@ try { switch ($action) {
         ");
         $payStmt->execute([$id, $clubId]);
 
+        $invoice['trainer_sessions_used'] = Attendance::trainerSessionsUsed($pdo, $id);
         Response::ok([
             'invoice'  => $invoice,
             'payments' => $payStmt->fetchAll(),
@@ -325,7 +340,7 @@ try { switch ($action) {
         $trainerId   = (int)($input['trainer_id']   ?? 0) ?: null;
         $trainerName = null;
         if ($trainerId) {
-            if (empty($tariff['has_trainer'])) Response::error('Цей тариф не передбачає призначення тренера');
+            inv_assertTrainerAllowed($tariff);
             $trStmt = $pdo->prepare("
                 SELECT u.full_name FROM club_trainers ct
                 JOIN sys_users u ON u.id = ct.user_id
@@ -343,17 +358,17 @@ try { switch ($action) {
                     (club_id, client_id, tariff_id, tariff_name,
                      price, paid_amount,
                      start_date, end_date,
-                     visits_total, visits_used, status, sale_type,
+                     visits_total, visits_used, trainer_sessions_total, status, sale_type,
                      trainer_id, trainer_name,
                      trainer_narah_type, trainer_narah_amount,
                      admin_id, admin_name,
                      created_by, notes)
-                VALUES (?,?,?,?, ?,?, ?,?, ?,0,'active',?, ?,?, ?,?, ?,?, ?,?)
+                VALUES (?,?,?,?, ?,?, ?,?, ?,0,?,'active',?, ?,?, ?,?, ?,?, ?,?)
             ")->execute([
                 $clubId, $clientId, $tariffId, $tariff['name'],
                 $finalPrice, 0,
                 $startDate, $endDate,
-                $tariff['visits_limit'] ?: null, $saleType,
+                $tariff['visits_limit'] ?: null, inv_trainerSessions($tariff), $saleType,
                 $trainerId, $trainerName,
                 $tariff['narah_summ_type'] ?? null,
                 $finalPrice, // trainer_narah_amount
@@ -435,9 +450,8 @@ try { switch ($action) {
             $visitsTotal = $inv['visits_total'];
         }
 
-        if ($trainerId && empty($tariff['has_trainer'])) {
-            Response::error('Цей тариф не передбачає призначення тренера');
-        }
+        if ($trainerId) inv_assertTrainerAllowed($tariff);
+        $trainerSessionsTotal = !empty($inv['group_id']) ? $inv['trainer_sessions_total'] : inv_trainerSessions($tariff);
 
         // Тренер
         $trainerName = null;
@@ -460,13 +474,14 @@ try { switch ($action) {
                 price        = ?,
                 visits_total = ?,
                 visits_used  = ?,
+                trainer_sessions_total = ?,
                 trainer_id   = ?,
                 trainer_name = ?,
                 notes        = ?
             WHERE id = ? AND club_id = ?
         ")->execute([
             $tariffId, $tariffName, $startDate, $endDate,
-            $price, $visitsTotal, $visitsUsed,
+            $price, $visitsTotal, $visitsUsed, $trainerSessionsTotal,
             $trainerId, $trainerName, $notes,
             $id, $clubId,
         ]);
@@ -1004,7 +1019,7 @@ try { switch ($action) {
         $tariff = $tStmt->fetch() ?: [];
 
         $trainerId   = (int)($input['trainer_id'] ?? 0) ?: null;
-        if ($trainerId && empty($tariff['has_trainer'])) Response::error('Цей тариф не передбачає призначення тренера');
+        if ($trainerId) inv_assertTrainerAllowed($tariff);
         $trainerName = inv_trainerName($pdo, $clubId, $trainerId);
 
         // Ліміт місць
@@ -1035,10 +1050,10 @@ try { switch ($action) {
                 INSERT INTO client_invoices
                     (club_id, client_id, tariff_id, tariff_name, group_id, min_paid_to_activate,
                      price, paid_amount, start_date, end_date,
-                     visits_total, visits_used, status, sale_type,
+                     visits_total, visits_used, trainer_sessions_total, status, sale_type,
                      trainer_id, trainer_name, trainer_narah_type, trainer_narah_amount,
                      admin_id, admin_name, created_by, notes)
-                VALUES (?,?,?,?,?,?, ?,0,?,?, ?,0,'active',?, ?,?,?,?, ?,?,?,?)
+                VALUES (?,?,?,?,?,?, ?,0,?,?, ?,0,?,'active',?, ?,?,?,?, ?,?,?,?)
             ");
             foreach ($clients as $c) {
                 Billing::checkInvoiceLimit($clubId);
@@ -1048,6 +1063,7 @@ try { switch ($action) {
                     $clubId, (int)$c['id'], $group['tariff_id'], $group['tariff_name'], $groupId, $group['min_payment'],
                     $group['member_price'], $group['start_date'], $group['end_date'],
                     ($tariff['visits_limit'] ?? null) ?: null,
+                    $tariff ? inv_trainerSessions($tariff) : null,
                     inv_saleType($pdo, $clubId, (int)$c['id'], $EFFECTIVE_STATUS_SQL),
                     $trainerId, $trainerName, $tariff['narah_summ_type'] ?? null, $group['member_price'],
                     $userId, $sess['full_name'] ?? null, $userId,

@@ -65,6 +65,45 @@ class Attendance
     }
 
     /**
+     * Скільки занять з тренером уже використано за абонементом: відвідування з тренером,
+     * крім групових занять (групове заняття — не персональне, у ліміт не входить).
+     */
+    public static function trainerSessionsUsed(PDO $pdo, int $invoiceId): int
+    {
+        $st = $pdo->prepare("
+            SELECT COUNT(*) FROM visits v
+            WHERE v.invoice_id = ? AND v.trainer_id IS NOT NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM group_session_clients g JOIN group_sessions gs ON gs.id = g.session_id
+                  WHERE g.visit_id = v.id AND gs.kind = 'group'
+              )
+        ");
+        $st->execute([$invoiceId]);
+        return (int)$st->fetchColumn();
+    }
+
+    /**
+     * Чи можна відмітити ще одне заняття з тренером за цим абонементом (ліміт
+     * trainer_sessions_total: для змішаних тарифів "N відвідувань, з них K з тренером"
+     * і для безлімітних). Повертає текст помилки або null.
+     */
+    public static function trainerSessionError(PDO $pdo, int $invoiceId): ?string
+    {
+        $st = $pdo->prepare("SELECT visits_total, trainer_sessions_total, trainer_id FROM client_invoices WHERE id=?");
+        $st->execute([$invoiceId]);
+        $inv = $st->fetch();
+        if (!$inv) return null;
+        if (!$inv['trainer_sessions_total']) {
+            // Старі абонементи на N відвідувань без знімка — обмежує сам ліміт відвідувань
+            if ($inv['visits_total'] !== null) return null;
+            return 'Цей абонемент не передбачає занять з тренером (безлімітний тариф без кількості занять з тренером)';
+        }
+        if (self::trainerSessionsUsed($pdo, $invoiceId) >= (int)$inv['trainer_sessions_total'])
+            return 'Заняття з тренером за цим абонементом вичерпано';
+        return null;
+    }
+
+    /**
      * Нараховує тренеру за персональне відвідування. Джерело правила —
      * ВИКЛЮЧНО профіль тренера (club_trainers.personal_earn_*). Оплата
      * абонемента на це жодним чином не впливає.
@@ -80,6 +119,7 @@ class Attendance
 
         $invStmt = $pdo->prepare("
             SELECT ci.price, ci.paid_amount, ci.visits_total, ci.visits_used, ci.end_date,
+                   ci.trainer_sessions_total,
                    t.has_trainer, t.earn_release_trigger
             FROM client_invoices ci
             LEFT JOIN tariffs t ON t.id = ci.tariff_id
@@ -88,9 +128,19 @@ class Attendance
         $invStmt->execute([$invoiceId, $clubId]);
         $inv = $invStmt->fetch();
         if (!$inv || !$inv['has_trainer']) return; // тариф не позначено "з тренером"
-        if (!$inv['visits_total']) return; // безлімітний по відвідуваннях — нема бази для нарахування
+        // База — кількість занять з тренером: N відвідувань тарифу або, для безлімітного,
+        // явно вказана кількість занять з тренером. Без неї тренера не призначають — і не платять.
+        // Вартість одного заняття: ціна ÷ кількість відвідувань (змішаний тариф — кожне
+        // відвідування має однакову вартість), для безлімітного — ÷ кількість занять з тренером.
+        $sessions = (int)($inv['visits_total'] ?: $inv['trainer_sessions_total'] ?: 0);
+        if ($sessions <= 0) return;
+        // Платимо лише за заняття в межах ліміту занять з тренером
+        $limit = (int)($inv['trainer_sessions_total'] ?: $inv['visits_total']);
+        $paidCnt = $pdo->prepare("SELECT COUNT(*) FROM trainer_earnings WHERE invoice_id=? AND source='visit'");
+        $paidCnt->execute([$invoiceId]);
+        if ((int)$paidCnt->fetchColumn() >= $limit) return;
 
-        $baseAmount = round((float)$inv['price'] / (int)$inv['visits_total'], 2);
+        $baseAmount = round((float)$inv['price'] / $sessions, 2);
 
         $trStmt = $pdo->prepare("
             SELECT personal_earn_type, personal_earn_value,

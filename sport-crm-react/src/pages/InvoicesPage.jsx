@@ -37,6 +37,8 @@ const FILTERS = [
 // 'new' навмисно без бейджа (це більшість продажів, підсвічувати нема сенсу).
 const SALE_TYPE_LABELS = { renewal: 'Продовження', return: 'Повернення' };
 const PAY_METHODS = { cash: 'Готівка', card: 'Карта', terminal: 'Термінал', deposit: 'Депозит', transfer: 'Переказ' };
+// Тренера можна призначити лише на тариф «з тренером» з відомою кількістю занять з тренером
+const trainerAllowed = (t) => !!t?.has_trainer && !!(t.trainer_sessions || t.visits_limit);
 const EMPTY_DATA = { invoices: [], pagination: { total: 0, page: 1, pages: 1, per_page: 25 } };
 
 function addDaysLocal(dateStr, n) {
@@ -175,7 +177,7 @@ export default function InvoicesPage() {
         next.end_date = localDate(d);
         next.price = t.price;
         next.visits_total = t.visits_limit ?? '';
-        if (!t.has_trainer) next.trainer_id = '';
+        if (!trainerAllowed(t)) next.trainer_id = '';
       }
       return next;
     });
@@ -399,7 +401,7 @@ export default function InvoicesPage() {
             <FormGroup label="Тариф *">
               <select value={sell.tariffId} onChange={(e) => {
                 const t = tariffs.find((x) => String(x.id) === String(e.target.value));
-                setSell({ ...sell, tariffId: e.target.value, trainerId: t?.has_trainer ? sell.trainerId : '' });
+                setSell({ ...sell, tariffId: e.target.value, trainerId: trainerAllowed(t) ? sell.trainerId : '' });
               }}>
                 <option value="">{tariffs.length ? '— Оберіть тариф —' : 'Тарифів немає'}</option>
                 {tariffs.map((t) => (
@@ -414,7 +416,7 @@ export default function InvoicesPage() {
                 </div>
               )}
             </FormGroup>
-            {selectedSellTariff?.has_trainer && (
+            {trainerAllowed(selectedSellTariff) && (
               <FormGroup label="Тренер (рекомендований)">
                 <select value={sell.trainerId} onChange={(e) => setSell({ ...sell, trainerId: e.target.value })}>
                   <option value="">— Без тренера —</option>
@@ -492,7 +494,7 @@ export default function InvoicesPage() {
       >
         {editInv && (() => {
           const editTariff = tariffs.find((t) => String(t.id) === String(editInv.tariff_id));
-          const hasTrainer = !!editTariff?.has_trainer;
+          const hasTrainer = trainerAllowed(editTariff);
           return (
             <div style={{ opacity: editInv.loading ? 0.4 : 1 }}>
               {editInv.error && <div className="alert alert-error">{editInv.error}</div>}
