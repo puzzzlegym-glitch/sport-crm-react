@@ -7,7 +7,7 @@ export const createGroupSession = (payload) => api('create', payload, 'groupSess
 export const updateGroupSession = (payload) => api('update', payload, 'groupSessions');
 export const cancelGroupSession = (sessionId) => api('cancel', { session_id: sessionId }, 'groupSessions');
 export const addGroupSessionClient = (sessionId, clientId) => api('add_client', { session_id: sessionId, client_id: clientId }, 'groupSessions');
-export const removeGroupSessionClient = (rosterId) => api('remove_client', { roster_id: rosterId }, 'groupSessions');
+export const removeGroupSessionClient = (rosterId, force = false) => api('remove_client', { roster_id: rosterId, force }, 'groupSessions');
 export const markGroupSessionAttendance = (rosterId, status) => api('mark_attendance', { roster_id: rosterId, status }, 'groupSessions');
 export const completeGroupSession = (sessionId) => api('complete_session', { session_id: sessionId }, 'groupSessions');
 export const getMyGroupSchedule = () => api('my_schedule', {}, 'groupSessions');

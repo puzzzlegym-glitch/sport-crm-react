@@ -39,7 +39,7 @@ export const NAV_ITEMS = {
   // menuGate: false — це НОВИЙ slug, PHP-дефолти Auth::getMenuSettings() прописані
   // лише на 15 "старих" slug'ів (див. коментар зверху файлу); true тут зробило б
   // auth.menu['group_sessions'] === undefined і сторінка зникла б для всіх.
-  group_sessions: { href: '/group-sessions', icon: 'clock', label: 'Групові заняття', section: 'main', permission: 'group_sessions.view', menuGate: false, planGate: true },
+  group_sessions: { href: '/group-sessions', icon: 'clock', label: 'Розклад і запис', section: 'main', permission: 'group_sessions.view', menuGate: false, planGate: true },
 
   users: { href: '/users', icon: 'users', label: 'Команда', section: 'manage', permission: 'users.manage', menuGate: true, planGate: true },
   billing: { href: '/billing', icon: 'card', label: 'Підписка', section: 'manage', menuGate: true, planGate: false },

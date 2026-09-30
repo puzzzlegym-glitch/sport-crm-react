@@ -25,6 +25,7 @@ require_once $appDir . '/core/Support.php';
 require_once $appDir . '/core/DriveHubBridge.php';
 require_once $appDir . '/core/Attendance.php';
 require_once $appDir . '/core/Recalc.php';
+require_once $appDir . '/core/Booking.php';
 
 // Налаштування PHP-помилок залежно від режиму
 if (DEV_MODE) {

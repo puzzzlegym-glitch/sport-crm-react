@@ -34,13 +34,40 @@ $pdo    = Database::get();
 $clubId = (int)($input['club_id'] ?? $_GET['club_id'] ?? $sess['active_club_id'] ?? 0);
 if (!$clubId) Response::error('Не обрано клуб', 400);
 
-Auth::requireClubAccess($sess, $clubId, 30);
-$userId = (int)$sess['user_id'];
+$access  = Auth::requireClubAccess($sess, $clubId, 30);
+$isOwner = Auth::isOwner($sess, $access);
+$userId  = (int)$sess['user_id'];
 
 function myTrainerId(PDO $pdo, int $clubId, int $userId): int {
     $s = $pdo->prepare("SELECT id FROM club_trainers WHERE club_id=? AND user_id=? LIMIT 1");
     $s->execute([$clubId, $userId]);
     return (int)($s->fetchColumn() ?: 0);
+}
+
+// Тип заняття, зал і час завершення з форми; перевірка накладок залу/тренера.
+function gs_resolveForm(PDO $pdo, int $clubId, array $input, array $base, ?int $excludeId): array {
+    $typeId = array_key_exists('class_type_id', $input) ? ((int)$input['class_type_id'] ?: null) : ($base['class_type_id'] ?? null);
+    $roomId = array_key_exists('room_id', $input) ? ((int)$input['room_id'] ?: null) : ($base['room_id'] ?? null);
+    $type = null;
+    if ($typeId) {
+        $t = $pdo->prepare("SELECT * FROM class_types WHERE id=? AND club_id=?");
+        $t->execute([$typeId, $clubId]);
+        $type = $t->fetch();
+        if (!$type) Response::error('Тип заняття не знайдено');
+    }
+    if ($roomId) {
+        $r = $pdo->prepare("SELECT id FROM club_rooms WHERE id=? AND club_id=?");
+        $r->execute([$roomId, $clubId]);
+        if (!$r->fetchColumn()) Response::error('Зал не знайдено');
+    }
+    return [$typeId, $roomId, $type];
+}
+
+function gs_checkConflict(PDO $pdo, int $clubId, string $date, string $start, string $end, int $trainerId, ?int $roomId, ?int $excludeId): void {
+    if (strlen($start) === 5) $start .= ':00';
+    if (strlen($end) === 5)   $end   .= ':00';
+    if ($end <= $start) Response::error('Час завершення має бути пізніше за час початку');
+    if ($c = Booking::findConflict($pdo, $clubId, $date, $start, $end, $trainerId, $roomId, $excludeId)) Response::error($c, 409);
 }
 
 function loadSession(PDO $pdo, int $clubId, int $sessionId): ?array {
@@ -63,22 +90,37 @@ case 'get_list':
     $where  = ['gs.club_id = ?', 'gs.session_date BETWEEN ? AND ?'];
     $params = [$clubId, $dateFrom, $dateTo];
     if ($trainerId) { $where[] = 'gs.trainer_id = ?'; $params[] = $trainerId; }
+    $roomId = (int)($input['room_id'] ?? 0);
+    if ($roomId) { $where[] = 'gs.room_id = ?'; $params[] = $roomId; }
+    $kind = trim($input['kind'] ?? '');
+    if (in_array($kind, ['group', 'personal'], true)) { $where[] = 'gs.kind = ?'; $params[] = $kind; }
+
+    // Повторюваний розклад добудовується "ліниво" при перегляді (як autoUnfreezeExpired)
+    if (Auth::can($sess, $clubId, 'group_sessions.manage')) Booking::generate($pdo, $clubId);
     if (in_array($status, ['scheduled', 'completed', 'canceled'], true)) {
         $where[] = 'gs.status = ?'; $params[] = $status;
     }
 
     $stmt = $pdo->prepare("
         SELECT gs.*, u.full_name AS trainer_name,
+               r.name AS room_name, t.color AS color,
                (SELECT COUNT(*) FROM group_session_clients gsc
                 WHERE gsc.session_id = gs.id AND gsc.status IN ('booked','attended')) AS roster_count,
                (SELECT COUNT(*) FROM group_session_clients gsc
-                WHERE gsc.session_id = gs.id AND gsc.status = 'attended') AS attended_count
+                WHERE gsc.session_id = gs.id AND gsc.status = 'attended') AS attended_count,
+               (SELECT COUNT(*) FROM group_session_clients gsc
+                WHERE gsc.session_id = gs.id AND gsc.status = 'waitlist') AS waitlist_count,
+               (SELECT GROUP_CONCAT(c.full_name SEPARATOR ', ') FROM group_session_clients gsc
+                JOIN clients c ON c.id = gsc.client_id
+                WHERE gsc.session_id = gs.id AND gs.kind = 'personal' AND gsc.status IN ('booked','attended','no_show')) AS personal_client
         FROM group_sessions gs
         JOIN club_trainers ct ON ct.id = gs.trainer_id
         JOIN sys_users u ON u.id = ct.user_id
+        LEFT JOIN club_rooms r ON r.id = gs.room_id
+        LEFT JOIN class_types t ON t.id = gs.class_type_id
         WHERE " . implode(' AND ', $where) . "
         ORDER BY gs.session_date ASC, gs.start_time ASC
-        LIMIT 300
+        LIMIT 1000
     ");
     $stmt->execute($params);
     Response::ok(['sessions' => $stmt->fetchAll()]);
@@ -113,16 +155,24 @@ case 'get_one':
     ");
     $trStmt->execute([$session['trainer_id']]);
     $session['trainer_name'] = $trStmt->fetchColumn();
+    if ($session['room_id']) {
+        $rs = $pdo->prepare("SELECT name FROM club_rooms WHERE id=?");
+        $rs->execute([$session['room_id']]);
+        $session['room_name'] = $rs->fetchColumn() ?: null;
+    }
+    $bcfg = Booking::settings($pdo, $clubId);
+    $session['cancel_deadline_at'] = date('Y-m-d H:i:s', Booking::sessionStartTs($session) - $bcfg['cancel_deadline_minutes'] * 60);
 
     $rosterStmt = $pdo->prepare("
         SELECT gsc.id, gsc.client_id, gsc.invoice_id, gsc.visit_id, gsc.status, gsc.checked_in_at,
+               gsc.source, gsc.canceled_at, gsc.canceled_by, gsc.created_at,
                c.full_name AS client_name, c.phone AS client_phone,
                ci.tariff_name
         FROM group_session_clients gsc
         JOIN clients c ON c.id = gsc.client_id
         LEFT JOIN client_invoices ci ON ci.id = gsc.invoice_id
         WHERE gsc.session_id = ?
-        ORDER BY gsc.created_at ASC
+        ORDER BY FIELD(gsc.status,'attended','booked','no_show','waitlist','canceled'), gsc.created_at ASC
     ");
     $rosterStmt->execute([$sessionId]);
 
@@ -142,6 +192,11 @@ case 'create':
     $notes       = trim($input['notes']         ?? '') ?: null;
 
     if (!$trainerId)                                          Response::error('Вкажіть тренера');
+    if (!$name && !empty($input['class_type_id'])) {
+        $tn = $pdo->prepare("SELECT name FROM class_types WHERE id=? AND club_id=?");
+        $tn->execute([(int)$input['class_type_id'], $clubId]);
+        $name = (string)$tn->fetchColumn();
+    }
     if (!$name)                                                Response::error("Вкажіть назву заняття");
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $sessionDate))    Response::error('Невірний формат дати');
     if (!preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $startTime))   Response::error('Невірний формат часу початку');
@@ -150,11 +205,16 @@ case 'create':
     $chk->execute([$trainerId, $clubId]);
     if (!$chk->fetchColumn()) Response::error('Тренера не знайдено', 404);
 
+    [$typeId, $roomId, $type] = gs_resolveForm($pdo, $clubId, $input, [], null);
+    if (!$endTime) $endTime = Booking::addMinutes(strlen($startTime) === 5 ? "$startTime:00" : $startTime, (int)($type['duration_min'] ?? 60));
+    if ($capacity === null && $type && $type['capacity'] !== null) $capacity = (int)$type['capacity'];
+    gs_checkConflict($pdo, $clubId, $sessionDate, $startTime, $endTime, $trainerId, $roomId, null);
+
     $pdo->prepare("
         INSERT INTO group_sessions
-            (club_id, trainer_id, name, session_date, start_time, end_time, capacity, notes, created_by)
-        VALUES (?,?,?,?,?,?,?,?,?)
-    ")->execute([$clubId, $trainerId, $name, $sessionDate, $startTime, $endTime, $capacity, $notes, $userId]);
+            (club_id, kind, class_type_id, trainer_id, room_id, name, session_date, start_time, end_time, capacity, notes, created_by)
+        VALUES (?,'group',?,?,?,?,?,?,?,?,?,?)
+    ")->execute([$clubId, $typeId, $trainerId, $roomId, $name, $sessionDate, $startTime, $endTime, $capacity, $notes, $userId]);
 
     Response::ok(['id' => (int)$pdo->lastInsertId()], 'Заняття заплановано');
 
@@ -181,11 +241,18 @@ case 'update':
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $sessionDate))  Response::error('Невірний формат дати');
     if (!preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $startTime)) Response::error('Невірний формат часу початку');
 
+    [$typeId, $roomId, $type] = gs_resolveForm($pdo, $clubId, $input, $session, $sessionId);
+    if (!$endTime) $endTime = Booking::addMinutes(strlen($startTime) === 5 ? "$startTime:00" : $startTime, (int)($type['duration_min'] ?? 60));
+    if ($session['kind'] === 'personal') $capacity = 1;
+    gs_checkConflict($pdo, $clubId, $sessionDate, $startTime, $endTime, $trainerId, $roomId, $sessionId);
+
     $pdo->prepare("
         UPDATE group_sessions
-        SET trainer_id=?, name=?, session_date=?, start_time=?, end_time=?, capacity=?, notes=?
+        SET trainer_id=?, class_type_id=?, room_id=?, name=?, session_date=?, start_time=?, end_time=?, capacity=?, notes=?
         WHERE id=?
-    ")->execute([$trainerId, $name, $sessionDate, $startTime, $endTime, $capacity, $notes, $sessionId]);
+    ")->execute([$trainerId, $typeId, $roomId, $name, $sessionDate, $startTime, $endTime, $capacity, $notes, $sessionId]);
+    // Місткість збільшили — віддаємо звільнені місця листу очікування
+    while (Booking::promoteWaitlist($pdo, $clubId, $sessionId)) {}
 
     Response::ok([], 'Збережено');
 
@@ -201,6 +268,10 @@ case 'cancel':
     if ($session['status'] === 'completed') Response::error('Завершене заняття скасувати не можна', 409);
 
     $pdo->prepare("UPDATE group_sessions SET status='canceled' WHERE id=?")->execute([$sessionId]);
+    $pdo->prepare("
+        UPDATE group_session_clients SET status='canceled', canceled_at=NOW(), canceled_by='club'
+        WHERE session_id=? AND status IN ('booked','waitlist')
+    ")->execute([$sessionId]);
     Response::ok([], 'Заняття скасовано');
 
 
@@ -211,41 +282,15 @@ case 'add_client':
     $clientId  = (int)($input['client_id']  ?? 0);
     if (!$sessionId || !$clientId) Response::error('Вкажіть session_id і client_id');
 
-    $session = loadSession($pdo, $clubId, $sessionId);
-    if (!$session) Response::error('Заняття не знайдено', 404);
-    if ($session['status'] !== 'scheduled') Response::error('Можна записувати лише на заплановане заняття', 409);
-
-    $cStmt = $pdo->prepare("SELECT id, status FROM clients WHERE id=? AND club_id=? LIMIT 1");
-    $cStmt->execute([$clientId, $clubId]);
-    $client = $cStmt->fetch();
-    if (!$client) Response::error('Клієнта не знайдено', 404);
-    if ($client['status'] === 'blocked') Response::error('Клієнт заблокований', 403);
-
-    if ($session['capacity']) {
-        $cntStmt = $pdo->prepare("
-            SELECT COUNT(*) FROM group_session_clients
-            WHERE session_id=? AND status IN ('booked','attended')
-        ");
-        $cntStmt->execute([$sessionId]);
-        if ((int)$cntStmt->fetchColumn() >= (int)$session['capacity']) {
-            Response::error('Заняття заповнене — місткість вичерпано', 409);
-        }
-    }
-
-    $invoice   = Attendance::findActiveInvoice($pdo, $clubId, $clientId);
-    $invoiceId = $invoice['id'] ?? null;
-
     try {
-        $pdo->prepare("
-            INSERT INTO group_session_clients (session_id, client_id, invoice_id, status, created_by)
-            VALUES (?,?,?,'booked',?)
-        ")->execute([$sessionId, $clientId, $invoiceId, $userId]);
-    } catch (PDOException $e) {
-        if ($e->getCode() === '23000') Response::error('Клієнт вже записаний на це заняття', 409);
-        throw $e;
+        $res = Booking::book($pdo, $clubId, $sessionId, $clientId, 'staff', 'admin', $userId);
+    } catch (BookingException $e) {
+        Response::error($e->getMessage(), 409);
     }
-
-    Response::ok(['id' => (int)$pdo->lastInsertId(), 'invoice_id' => $invoiceId], 'Клієнта додано до заняття');
+    Response::ok(
+        ['id' => $res['roster_id'], 'invoice_id' => $res['invoice_id'], 'status' => $res['status']],
+        $res['status'] === 'waitlist' ? 'Місць немає — клієнта додано в лист очікування' : 'Клієнта записано'
+    );
 
 
 // ════ ПРИБРАТИ КЛІЄНТА З РОСТЕРУ ═════════════════════════════════
@@ -254,18 +299,14 @@ case 'remove_client':
     $rosterId = (int)($input['roster_id'] ?? 0);
     if (!$rosterId) Response::error('Вкажіть roster_id');
 
-    $rStmt = $pdo->prepare("
-        SELECT gsc.id, gsc.status FROM group_session_clients gsc
-        JOIN group_sessions gs ON gs.id = gsc.session_id
-        WHERE gsc.id=? AND gs.club_id=? LIMIT 1
-    ");
-    $rStmt->execute([$rosterId, $clubId]);
-    $roster = $rStmt->fetch();
-    if (!$roster) Response::error('Запис не знайдено', 404);
-    if ($roster['status'] !== 'booked') Response::error('Прибрати можна лише клієнта зі статусом "booked"', 409);
-
-    $pdo->prepare("DELETE FROM group_session_clients WHERE id=?")->execute([$rosterId]);
-    Response::ok([], 'Клієнта прибрано із заняття');
+    // Після дедлайну скасування заборонене всім, крім власника (force)
+    $force = !empty($input['force']) && $isOwner;
+    try {
+        $res = Booking::cancel($pdo, $clubId, $rosterId, 'staff', $force);
+    } catch (BookingException $e) {
+        Response::error($e->getMessage(), 409, ['can_force' => $isOwner]);
+    }
+    Response::ok($res, $res['promoted_client_id'] ? 'Запис скасовано, місце отримав перший з листа очікування' : 'Запис скасовано');
 
 
 // ════ ВІДМІТИТИ ПРИСУТНІСТЬ ══════════════════════════════════════
@@ -278,7 +319,7 @@ case 'mark_attendance':
 
     $rStmt = $pdo->prepare("
         SELECT gsc.id, gsc.client_id, gsc.invoice_id, gsc.status AS current_status,
-               gs.id AS session_id, gs.trainer_id, gs.status AS session_status
+               gs.id AS session_id, gs.trainer_id, gs.status AS session_status, gs.kind
         FROM group_session_clients gsc
         JOIN group_sessions gs ON gs.id = gsc.session_id
         WHERE gsc.id=? AND gs.club_id=? LIMIT 1
@@ -288,6 +329,7 @@ case 'mark_attendance':
     if (!$roster) Response::error('Запис не знайдено', 404);
     if ($roster['session_status'] !== 'scheduled') Response::error('Заняття вже завершене або скасоване', 409);
     if ($roster['current_status'] === 'attended') Response::error('Присутність уже відмічено', 409);
+    if (in_array($roster['current_status'], ['waitlist', 'canceled'], true)) Response::error('Клієнт не записаний на заняття (лист очікування / скасовано)', 409);
 
     if ($newStatus === 'attended') {
         $trStmt = $pdo->prepare("
@@ -313,6 +355,13 @@ case 'mark_attendance':
             WHERE id=?
         ")->execute([$visitId, $rosterId]);
 
+        // Персональне тренування: нарахування тренеру — як за персональне відвідування,
+        // і заняття одразу завершується (у ньому лише один клієнт).
+        if ($roster['kind'] === 'personal') {
+            Attendance::createTrainerEarning($pdo, $clubId, $visitId, $roster['invoice_id'] ? (int)$roster['invoice_id'] : null, (int)$roster['trainer_id']);
+            $pdo->prepare("UPDATE group_sessions SET status='completed' WHERE id=?")->execute([$roster['session_id']]);
+        }
+
         Response::ok(['visit_id' => $visitId], 'Присутність відмічено');
     } else {
         $pdo->prepare("UPDATE group_session_clients SET status='no_show' WHERE id=?")->execute([$rosterId]);
@@ -331,7 +380,7 @@ case 'complete_session':
     if ($session['status'] !== 'scheduled') Response::error('Заняття вже завершене або скасоване', 409);
 
     $pdo->prepare("UPDATE group_sessions SET status='completed' WHERE id=?")->execute([$sessionId]);
-    Attendance::createGroupSessionEarning($pdo, $clubId, $sessionId);
+    if ($session['kind'] !== 'personal') Attendance::createGroupSessionEarning($pdo, $clubId, $sessionId);
 
     Response::ok([], 'Заняття завершено, нарахування тренеру зафіксовано');
 

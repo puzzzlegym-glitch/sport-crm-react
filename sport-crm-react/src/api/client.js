@@ -34,6 +34,7 @@ const API = {
   prro:           '/api/prro_api.php',
   acquiring:      '/api/acquiring_api.php',
   groupSessions:  '/api/group_sessions_api.php',
+  booking:        '/api/booking_api.php',
   equipment:      '/api/equipment_api.php',
 };
 
