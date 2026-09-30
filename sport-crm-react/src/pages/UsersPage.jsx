@@ -14,6 +14,7 @@ import { getUsers, getRoles, inviteUser, updateUserRole, toggleUserAccess, remov
 import {
   getPayrollTeam, getPayroll, getPayrollSummary, getSalarySettings,
   saveSalarySettings, calcPayrollPreview, createPayroll, payPayroll, getWorkedShifts,
+  getPayrollPayouts, reversePayrollPayout,
 } from '../api/payroll';
 import { formatDate, getInitials } from '../utils/format';
 import './UsersPage.css';
@@ -43,7 +44,7 @@ const currentMonth = () => new Date().toISOString().slice(0, 7);
 
 export default function UsersPage() {
   const { user } = useAuth();
-  const { has } = usePermissions();
+  const { has, isOwner: isClubOwner } = usePermissions();
   const { entitlements, canAddMember } = useEntitlements();
   const isOwner = has('users.manage');
   const toast = useToast();
@@ -70,6 +71,7 @@ export default function UsersPage() {
   const [summary, setSummary] = useState(null);
   const [createModal, setCreateModal] = useState(null);
   const [payModal, setPayModal] = useState(null);
+  const [payHist, setPayHist] = useState(null); // { row, payouts, storno: {id,label,reason,error,submitting}|null }
 
   async function reloadTeam() {
     setTeamLoading(true);
@@ -273,6 +275,24 @@ export default function UsersPage() {
     reloadSummary();
   }
 
+  // ── Історія виплат і сторно ─────────────────────────────────
+  async function openPayHist(row) {
+    setPayHist({ row, payouts: null, storno: null });
+    const res = await getPayrollPayouts(row.id);
+    setPayHist((h) => h && ({ ...h, payouts: res.success ? res.payouts : [] }));
+  }
+  async function submitPayrollStorno() {
+    const st = payHist.storno;
+    if (!st.reason.trim()) { setPayHist({ ...payHist, storno: { ...st, error: 'Вкажіть причину' } }); return; }
+    setPayHist({ ...payHist, storno: { ...st, submitting: true, error: '' } });
+    const res = await reversePayrollPayout(st.id, st.reason.trim());
+    if (!res.success) { setPayHist({ ...payHist, storno: { ...st, submitting: false, error: res.error } }); return; }
+    toast('Сторно проведено', 'success');
+    reloadPayroll();
+    reloadSummary();
+    openPayHist(payHist.row);
+  }
+
   // ── Виплата ───────────────────────────────────────────────
   function openPayModal(row) {
     const maxPay = Math.round((row.total_amount - row.paid_amount) * 100) / 100;
@@ -352,6 +372,7 @@ export default function UsersPage() {
       render: (r) => (
         <div style={{ display: 'flex', gap: 4, whiteSpace: 'nowrap' }} onClick={(e) => e.stopPropagation()}>
           {r.status !== 'paid' && <button className="btn btn-sm btn-ghost" onClick={() => openPayModal(r)}><Icon name="checkCircle" size={14} /> <span className="action-label-text">Виплатити</span></button>}
+          {parseFloat(r.paid_amount) > 0 && <button className="btn btn-sm btn-ghost" title="Історія виплат" onClick={() => openPayHist(r)}>🧾</button>}
           <button className="btn btn-sm btn-ghost" onClick={() => openSalarySettings(r.user_id, r.full_name)}>⚙️</button>
         </div>
       ),
@@ -650,6 +671,39 @@ export default function UsersPage() {
             <FormGroup label="Примітка">
               <input type="text" maxLength={200} placeholder="Необов'язково" value={createModal.notes} onChange={(e) => setCreateModal({ ...createModal, notes: e.target.value })} />
             </FormGroup>
+          </>
+        )}
+      </Modal>
+
+      {/* Історія виплат / сторно */}
+      <Modal open={!!payHist} onClose={() => setPayHist(null)} title={`Виплати: ${payHist?.row.full_name || ''} · ${payHist?.row.period_month || ''}`}>
+        {payHist && (
+          <>
+            {!payHist.payouts && <div className="loader"><span className="spinner" /></div>}
+            {payHist.payouts && payHist.payouts.length === 0 && (
+              <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Окремих записів виплат немає (виплати, проведені до оновлення системи, сторнувати не можна).</div>
+            )}
+            {payHist.payouts?.map((p) => (
+              <div key={p.id} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: 13 }}>
+                <span style={{ minWidth: 90 }}>{formatDate(p.expense_date)}</span>
+                <strong>{fmt(p.amount)}</strong>
+                <span style={{ color: 'var(--text-secondary)', flex: 1 }}>{p.payment_method === 'cash' ? 'готівка' : 'картка'} · {p.admin_name || ''}</span>
+                {isClubOwner && <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => setPayHist({ ...payHist, storno: { id: p.id, label: `${fmt(p.amount)} від ${formatDate(p.expense_date)}`, reason: '', error: '' } })}>Сторно</button>}
+              </div>
+            ))}
+            {payHist.storno && (
+              <div style={{ marginTop: 14, padding: 12, border: '1px solid var(--danger)', borderRadius: 'var(--radius-sm)' }}>
+                {payHist.storno.error && <div className="alert alert-error">{payHist.storno.error}</div>}
+                <div style={{ fontSize: 13, marginBottom: 8 }}>Сторно виплати {payHist.storno.label}: гроші повернуться в касу / облік, сума знову стане «до виплати».</div>
+                <FormGroup label="Причина *">
+                  <textarea rows="2" value={payHist.storno.reason} onChange={(e) => setPayHist({ ...payHist, storno: { ...payHist.storno, reason: e.target.value, error: '' } })} />
+                </FormGroup>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button className="btn btn-danger btn-sm" disabled={payHist.storno.submitting} onClick={submitPayrollStorno}>Провести сторно</button>
+                  <button className="btn btn-ghost btn-sm" onClick={() => setPayHist({ ...payHist, storno: null })}>Відмінити</button>
+                </div>
+              </div>
+            )}
           </>
         )}
       </Modal>

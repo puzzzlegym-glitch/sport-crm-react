@@ -64,13 +64,14 @@ function normalizeRow(row) {
   const date = dateOfRaw(row);
   if (row.__type === 'income') {
     const isInvoice = row.source_type === 'invoice';
+    const isRent = row.source_type === 'rent';
     return {
       key: `income-${row.source_type}-${row.id}`,
       date,
-      mainText: isInvoice ? 'Оплата абонементу' : 'Продаж товару',
+      mainText: isRent ? 'Оренда від тренера' : (isInvoice ? 'Оплата абонементу' : 'Продаж товару'),
       subText: [row.description, row.client_name].filter(Boolean).join(' · ') || '—',
-      categoryLabel: isInvoice ? 'Абонементи' : 'Товари',
-      categoryClass: isInvoice ? 'invoice' : 'product',
+      categoryLabel: isRent ? 'Оренда' : (isInvoice ? 'Абонементи' : 'Товари'),
+      categoryClass: isInvoice || isRent ? 'invoice' : 'product',
       method: row.payment_method,
       displayAmount: '+' + formatMoney(row.amount),
       amountClass: 'pos',
@@ -323,6 +324,7 @@ export default function FinancePage() {
   const donutSegments = summary ? [
     { label: 'Абонементи', value: parseFloat(summary.invoices_income) || 0, color: 'var(--success)', sub: `${summary.invoices_count} платежів` },
     { label: 'Продаж товарів', value: parseFloat(summary.products_income) || 0, color: 'var(--warning)', sub: `${summary.products_count} продажів` },
+    { label: 'Оренда від тренерів', value: parseFloat(summary.rent_income) || 0, color: '#bf5af2', sub: 'оренда' },
     { label: 'Поповнення депозитів', value: parseFloat(summary.deposits_top_up) || 0, color: 'var(--accent)', sub: 'поповнення' },
   ] : [];
   const donutTotal = donutSegments.reduce((s, x) => s + x.value, 0);

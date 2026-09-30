@@ -79,7 +79,7 @@ class Attendance
         if (!$invoiceId || !$trainerId) return;
 
         $invStmt = $pdo->prepare("
-            SELECT ci.price, ci.visits_total, ci.visits_used, ci.end_date,
+            SELECT ci.price, ci.paid_amount, ci.visits_total, ci.visits_used, ci.end_date,
                    t.has_trainer, t.earn_release_trigger
             FROM client_invoices ci
             LEFT JOIN tariffs t ON t.id = ci.tariff_id
@@ -127,7 +127,10 @@ class Attendance
         $releaseTrigger = $inv['earn_release_trigger'] ?: 'on_each_visit';
         $completedNow = ($releaseTrigger === 'on_visits_done' && (int)$inv['visits_used'] >= (int)$inv['visits_total'])
             || ($releaseTrigger === 'on_end_date' && $inv['end_date'] < date('Y-m-d'));
-        $immediate = in_array($releaseTrigger, ['on_each_visit', 'on_sale'], true) || $completedNow;
+        // Доступно лише коли абонемент повністю оплачений (інакше — 'locked', розблокує
+        // Recalc::unlockInvoiceTrainerEarnings після оплати)
+        $invoicePaid = (float)$inv['paid_amount'] >= (float)$inv['price'] - 0.01;
+        $immediate = $invoicePaid && (in_array($releaseTrigger, ['on_each_visit', 'on_sale'], true) || $completedNow);
 
         try {
             $pdo->prepare("
@@ -150,56 +153,75 @@ class Attendance
     }
 
     /**
-     * Нараховує тренеру за проведене групове заняття — один раз при
-     * завершенні заняття (group_sessions.status -> 'completed').
-     * Джерело правила — club_trainers.group_earn_rate/group_earn_bonus_per_client/
-     * group_bonus_threshold. Бонус за учасника застосовується до ВСІХ
-     * присутніх, щойно їх кількість досягає порогу (не маржинально) —
-     * узгоджено з формулюванням у TrainersPage.jsx ("від N осіб" / "з першого").
+     * Нарахування тренеру за групове заняття (ставка + бонус за учасника).
+     * Рахуються ЛИШЕ присутні, у кого заняття списане (visit з абонементом) і абонемент
+     * ПОВНІСТЮ ОПЛАЧЕНИЙ. Немає жодного такого — нарахування немає.
+     * Ідемпотентно: викликається при завершенні заняття і повторно після оплати
+     * абонемента когось із присутніх (Recalc::unlockInvoiceTrainerEarnings) —
+     * сума оновлюється, але не менше вже виплаченого.
      */
-    public static function createGroupSessionEarning(PDO $pdo, int $clubId, int $sessionId): void
+    public static function recalcGroupSessionEarning(PDO $pdo, int $clubId, int $sessionId): void
     {
-        $sStmt = $pdo->prepare("SELECT trainer_id FROM group_sessions WHERE id=? AND club_id=? LIMIT 1");
+        $sStmt = $pdo->prepare("SELECT trainer_id, status, kind FROM group_sessions WHERE id=? AND club_id=? LIMIT 1");
         $sStmt->execute([$sessionId, $clubId]);
-        $trainerId = (int)($sStmt->fetchColumn() ?: 0);
-        if (!$trainerId) return;
+        $s = $sStmt->fetch();
+        if (!$s || $s['status'] !== 'completed' || ($s['kind'] ?? 'group') === 'personal') return;
+        $trainerId = (int)$s['trainer_id'];
 
-        $cntStmt = $pdo->prepare("SELECT COUNT(*) FROM group_session_clients WHERE session_id=? AND status='attended'");
-        $cntStmt->execute([$sessionId]);
-        $attended = (int)$cntStmt->fetchColumn();
-
-        $trStmt = $pdo->prepare("
-            SELECT group_earn_rate, group_earn_bonus_per_client, group_bonus_threshold
-            FROM club_trainers WHERE id=? AND club_id=? LIMIT 1
+        $cntStmt = $pdo->prepare("
+            SELECT COUNT(*) FROM group_session_clients gsc
+            JOIN client_invoices ci ON ci.id = gsc.invoice_id
+            WHERE gsc.session_id=? AND gsc.status='attended' AND gsc.visit_id IS NOT NULL
+              AND ci.paid_amount >= ci.price - 0.01
         ");
-        $trStmt->execute([$trainerId, $clubId]);
-        $tr = $trStmt->fetch();
-        if (!$tr) return;
+        $cntStmt->execute([$sessionId]);
+        $counted = (int)$cntStmt->fetchColumn();
 
-        $rate      = (float)$tr['group_earn_rate'];
-        $bonus     = (float)$tr['group_earn_bonus_per_client'];
-        $threshold = (int)$tr['group_bonus_threshold'];
+        $amount = 0.0;
+        if ($counted > 0) {
+            $trStmt = $pdo->prepare("SELECT group_earn_rate, group_earn_bonus_per_client, group_bonus_threshold FROM club_trainers WHERE id=? AND club_id=? LIMIT 1");
+            $trStmt->execute([$trainerId, $clubId]);
+            $tr = $trStmt->fetch();
+            if (!$tr) return;
+            $bonus = (float)$tr['group_earn_bonus_per_client'];
+            $amount = round((float)$tr['group_earn_rate']
+                + ($counted >= (int)$tr['group_bonus_threshold'] && $bonus > 0 ? $bonus * $counted : 0), 2);
+        }
 
-        $amount = $rate + ($attended >= $threshold && $bonus > 0 ? $bonus * $attended : 0);
-        $amount = round($amount, 2);
-        if ($amount <= 0) return;
+        $ex = $pdo->prepare("SELECT id, paid_amount FROM trainer_earnings WHERE source='group_session' AND source_id=? LIMIT 1");
+        $ex->execute([$sessionId]);
+        $row = $ex->fetch();
 
-        try {
+        if (!$row) {
+            if ($amount <= 0) return;
             $pdo->prepare("
                 INSERT INTO trainer_earnings
                     (club_id, trainer_id, source, source_id, invoice_id,
                      earn_type, amount, available_amount, paid_amount,
                      release_trigger, available_at, status)
                 VALUES (?,?,'group_session',?,NULL, 'group_session',?,?,0, 'on_session_complete',?,'available')
-            ")->execute([
-                $clubId, $trainerId, $sessionId,
-                $amount, $amount,
-                date('Y-m-d H:i:s'),
-            ]);
-        } catch (PDOException $e) {
-            // Дублікат (source, source_id) — заняття вже завершували раніше.
-            if ($e->getCode() !== '23000') throw $e;
+            ")->execute([$clubId, $trainerId, $sessionId, $amount, $amount, date('Y-m-d H:i:s')]);
+            return;
         }
+
+        $paid = (float)$row['paid_amount'];
+        if ($amount <= 0 && $paid <= 0) {
+            $pdo->prepare("DELETE FROM trainer_earnings WHERE id=?")->execute([$row['id']]);
+            return;
+        }
+        $amount = max($amount, $paid);
+        $pdo->prepare("
+            UPDATE trainer_earnings SET amount=?, available_amount=?,
+                status = CASE WHEN ? >= ? THEN 'paid' WHEN ? > 0 THEN 'partial' ELSE 'available' END,
+                updated_at = NOW()
+            WHERE id=?
+        ")->execute([$amount, $amount, $paid, $amount, $paid, $row['id']]);
+    }
+
+    /** Сумісність зі старими викликами. */
+    public static function createGroupSessionEarning(PDO $pdo, int $clubId, int $sessionId): void
+    {
+        self::recalcGroupSessionEarning($pdo, $clubId, $sessionId);
     }
 
     /**

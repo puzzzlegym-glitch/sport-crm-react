@@ -16,3 +16,9 @@ export const getTrainerUsers = () => api('get_trainer_users', {}, 'trainers');
 export const getMyTrainerProfile = () => api('my_profile', {}, 'trainers');
 export const getMyTrainerEarnings = () => api('my_earnings', {}, 'trainers');
 export const getMyTrainerSummary = () => api('my_summary', {}, 'trainers');
+
+// Оренда: оплата тренером, історія виплат, сторно (лише власник)
+export const payTrainerRent = (payload) => api('rent_pay', payload, 'trainers');
+export const getTrainerPayouts = (trainerId) => api('get_payouts', { trainer_id: trainerId }, 'trainers');
+export const reverseTrainerPayout = (id, reason) => api('reverse_payout', { id, reason }, 'trainers');
+export const reverseTrainerRentPayment = (id, reason) => api('reverse_rent_payment', { id, reason }, 'trainers');

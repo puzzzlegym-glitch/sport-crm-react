@@ -114,8 +114,8 @@ case 'get_list':
             COALESCE(SUM(te.paid_amount),0)       AS total_paid,
             -- Оренда
             COALESCE((
-                SELECT SUM(tr.amount) FROM trainer_rent tr
-                WHERE tr.trainer_id=ct.id AND tr.status='pending'
+                SELECT SUM(tr.amount - tr.paid_amount) FROM trainer_rent tr
+                WHERE tr.trainer_id=ct.id AND tr.status <> 'paid'
             ),0) AS rent_pending
         FROM club_trainers ct
         JOIN sys_users u ON u.id = ct.user_id
@@ -432,7 +432,11 @@ case 'pay_earning':
             $sess['user_id'], $sess['full_name'] ?? null,
             $earnId,
         ]);
-        Recalc::cashflowSyncExpense($pdo, (int)$pdo->lastInsertId());
+        $expenseId = (int)$pdo->lastInsertId();
+        Recalc::cashflowSyncExpense($pdo, $expenseId);
+
+        // Оренда "з заробітку" утримується з цієї виплати автоматично
+        $deducted = Payouts::deductRent($pdo, $clubId, (int)$e['trainer_id'], $payAmount, $paymentMethod, $expenseId, $e['trainer_name'], $sess);
 
         $pdo->commit();
     } catch (Throwable $ex) {
@@ -440,7 +444,72 @@ case 'pay_earning':
         Response::serverError($ex->getMessage());
     }
 
-    Response::ok(['paid_amount' => $newPaid, 'status' => $newStatus], 'Виплату зафіксовано');
+    $net = round($payAmount - $deducted, 2);
+    Response::ok(
+        ['paid_amount' => $newPaid, 'status' => $newStatus, 'rent_deducted' => $deducted, 'net_to_trainer' => $net],
+        $deducted > 0 ? "Виплату зафіксовано. Утримано оренду {$deducted} грн, видати тренеру {$net} грн" : 'Виплату зафіксовано'
+    );
+
+// ════ ІСТОРІЯ ВИПЛАТ ТРЕНЕРУ ═══════════════════════════════════
+case 'get_payouts':
+    if (!Auth::can($sess, $clubId, 'trainers.manage')) Response::forbidden();
+    $trainerId = (int)($input['trainer_id'] ?? 0);
+    assertTrainerInClub($pdo, $trainerId, $clubId);
+    $st = $pdo->prepare("
+        SELECT e.id, e.amount, e.payment_method, e.expense_date, e.admin_name, e.description,
+               te.id AS earning_id, c.full_name AS client_name,
+               (SELECT COALESCE(SUM(p.amount),0) FROM trainer_rent_payments p WHERE p.expense_id = e.id) AS rent_deducted
+        FROM club_expenses e
+        JOIN trainer_earnings te ON te.id = e.source_id
+        LEFT JOIN client_invoices ci ON ci.id = te.invoice_id
+        LEFT JOIN clients c ON c.id = ci.client_id
+        WHERE e.club_id=? AND e.source='trainer_payout' AND te.trainer_id=?
+        ORDER BY e.id DESC LIMIT 200
+    ");
+    $st->execute([$clubId, $trainerId]);
+    $rp = $pdo->prepare("
+        SELECT p.*, r.period_start, r.period_end FROM trainer_rent_payments p
+        JOIN trainer_rent r ON r.id = p.rent_id
+        WHERE p.club_id=? AND p.trainer_id=? ORDER BY p.id DESC LIMIT 200
+    ");
+    $rp->execute([$clubId, $trainerId]);
+    Response::ok(['payouts' => $st->fetchAll(), 'rent_payments' => $rp->fetchAll()]);
+
+// ════ СТОРНО (лише власник, з причиною) ═══════════════════════
+case 'reverse_payout':
+case 'reverse_rent_payment':
+    if (!isset($access) || !Auth::isOwner($sess, $access)) Response::forbidden('Сторно — лише власник клубу');
+    $refId  = (int)($input['id'] ?? 0);
+    $reason = trim($input['reason'] ?? '');
+    if (!$refId) Response::error('Вкажіть id');
+    if ($reason === '') Response::error('Вкажіть причину сторно');
+    $pdo->beginTransaction();
+    try {
+        $action === 'reverse_payout'
+            ? Payouts::reverseTrainerPayout($pdo, $clubId, $refId, $reason, $sess)
+            : Payouts::reverseRentPayment($pdo, $clubId, $refId, $reason, $sess);
+        $pdo->commit();
+    } catch (Throwable $ex) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        Response::error($ex->getMessage());
+    }
+    Response::ok([], 'Сторно проведено');
+
+// ════ ОПЛАТА ОРЕНДИ ТРЕНЕРОМ ("Оплачено") ══════════════════════
+case 'rent_pay':
+    if (!Auth::can($sess, $clubId, 'trainers.manage')) Response::forbidden();
+    $rentId = (int)($input['rent_id'] ?? 0);
+    $amount = round((float)($input['amount'] ?? 0), 2);
+    $method = trim($input['payment_method'] ?? 'cash');
+    $pdo->beginTransaction();
+    try {
+        $left = Payouts::payRent($pdo, $clubId, $rentId, $amount, $method, $sess, trim($input['notes'] ?? '') ?: null);
+        $pdo->commit();
+    } catch (Throwable $ex) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        Response::error($ex->getMessage());
+    }
+    Response::ok(['left' => $left], $left > 0 ? "Оплату зараховано. Залишок оренди: {$left} грн" : 'Оренду сплачено повністю');
 
 // ════ ОРЕНДА ═══════════════════════════════════════════════════
 case 'get_rent':
@@ -506,6 +575,9 @@ case 'delete_rent':
     $chk->execute([$rentId, $clubId]);
     if (!$chk->fetchColumn()) Response::error('Запис не знайдено', 404);
 
+    $hp = $pdo->prepare("SELECT COUNT(*) FROM trainer_rent_payments WHERE rent_id=?");
+    $hp->execute([$rentId]);
+    if ((int)$hp->fetchColumn() > 0) Response::error('По цій оренді вже є оплати — спершу зробіть їх сторно');
     $pdo->prepare("DELETE FROM trainer_rent WHERE id=?")->execute([$rentId]);
     Response::ok([], 'Видалено');
 
@@ -531,19 +603,12 @@ case 'get_summary':
     $e2->execute([$trainerId]);
     $earn = $e2->fetch();
 
-    $r = $pdo->prepare("
-        SELECT
-            COALESCE(SUM(amount),0) AS total_rent,
-            SUM(CASE WHEN status='pending' THEN amount ELSE 0 END) AS rent_pending
-        FROM trainer_rent WHERE trainer_id=?
-    ");
-    $r->execute([$trainerId]);
-    $rent = $r->fetch();
+    // Оренда: "з заробітку" зменшує суму до видачі; "тренер платить" — окремий борг тренера
+    $rentDeduct = Payouts::rentRemaining($pdo, $trainerId, 'deduction');
+    $rentManual = Payouts::rentRemaining($pdo, $trainerId, 'manual');
+    $rent = ['rent_pending' => $rentDeduct + $rentManual];
 
-    $toPayOut = round(
-        (float)$earn['total_available'] - (float)$earn['total_paid'] - (float)$rent['rent_pending'],
-        2
-    );
+    $toPayOut = round((float)$earn['total_available'] - (float)$earn['total_paid'] - $rentDeduct, 2);
 
     Response::ok([
         'summary' => [
@@ -554,6 +619,8 @@ case 'get_summary':
             'cnt_available'   => (int)$earn['cnt_available'],
             'cnt_partial'     => (int)$earn['cnt_partial'],
             'rent_pending'    => (float)$rent['rent_pending'],
+            'rent_deduction'  => $rentDeduct,
+            'rent_manual'     => $rentManual,
             'to_pay_out'      => max(0, $toPayOut),
         ],
     ]);
@@ -604,17 +671,13 @@ case 'my_summary':
     ");
     $e2->execute([$tid]);
     $earn = $e2->fetch();
-    $r = $pdo->prepare("
-        SELECT COALESCE(SUM(amount),0) AS total_rent,
-               SUM(CASE WHEN status='pending' THEN amount ELSE 0 END) AS rent_pending
-        FROM trainer_rent WHERE trainer_id=?
-    ");
-    $r->execute([$tid]);
-    $rent = $r->fetch();
-    $toPayOut = max(0, round(
-        (float)$earn['total_available'] - (float)$earn['total_paid'] - (float)$rent['rent_pending'], 2
-    ));
-    Response::ok(['summary' => array_merge((array)$earn, (array)$rent, ['to_pay_out' => $toPayOut])]);
+    $rentDeduct = Payouts::rentRemaining($pdo, $tid, 'deduction');
+    $rentManual = Payouts::rentRemaining($pdo, $tid, 'manual');
+    $toPayOut = max(0, round((float)$earn['total_available'] - (float)$earn['total_paid'] - $rentDeduct, 2));
+    Response::ok(['summary' => array_merge((array)$earn, [
+        'rent_pending' => $rentDeduct + $rentManual, 'rent_deduction' => $rentDeduct, 'rent_manual' => $rentManual,
+        'to_pay_out' => $toPayOut,
+    ])]);
 
 // ════ СПИСОК ЮЗЕРІВ-ТРЕНЕРІВ (для select при створенні профілю) ═
 case 'get_trainer_users':

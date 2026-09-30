@@ -280,7 +280,18 @@ try { switch ($action) {
         ");
         $catRow->execute([$clubId, $dateFrom, $dateTo]);
 
-        $totalIncome  = (float)$inv['invoices_income'] + (float)$prod['sales_income'];
+        // Оренда від тренерів (оплачена сама або утримана з виплати)
+        $rentRow = $pdo->prepare("
+            SELECT COALESCE(SUM(amount),0) AS rent_income,
+                   COALESCE(SUM(CASE WHEN payment_method='cash' THEN amount ELSE 0 END),0) AS cash_sum,
+                   COALESCE(SUM(CASE WHEN payment_method='card' THEN amount ELSE 0 END),0) AS card_sum
+            FROM trainer_rent_payments
+            WHERE club_id = ? AND DATE(created_at) BETWEEN ? AND ?
+        ");
+        $rentRow->execute([$clubId, $dateFrom, $dateTo]);
+        $rentInc = $rentRow->fetch();
+
+        $totalIncome  = (float)$inv['invoices_income'] + (float)$prod['sales_income'] + (float)$rentInc['rent_income'];
         $totalExpense = (float)$exp['expenses_total'];
         $netProfit    = $totalIncome - $totalExpense;
 
@@ -296,13 +307,14 @@ try { switch ($action) {
                 'products_income'  => (float)$prod['sales_income'],
                 'products_count'   => (int)$prod['sales_count'],
                 'products_profit'  => (float)$prod['sales_profit'],
+                'rent_income'      => (float)$rentInc['rent_income'],
                 'deposits_top_up'  => (float)$dep['deposits_total'],
                 'expenses_total'   => $totalExpense,
                 'expenses_count'   => (int)$exp['expenses_count'],
                 // По методах оплати (всього)
                 'by_method' => [
-                    'cash'     => (float)$inv['cash_sum']     + (float)$prod['cash_sum'],
-                    'card'     => (float)$inv['card_sum']     + (float)$prod['card_sum'],
+                    'cash'     => (float)$inv['cash_sum']     + (float)$prod['cash_sum'] + (float)$rentInc['cash_sum'],
+                    'card'     => (float)$inv['card_sum']     + (float)$prod['card_sum'] + (float)$rentInc['card_sum'],
                     'terminal' => (float)$inv['terminal_sum'] + (float)$prod['terminal_sum'],
                 ],
             ],
@@ -360,8 +372,28 @@ try { switch ($action) {
             $productSales = [];
         }
 
+        // Оренда від тренерів
+        if ($source === '' || $source === 'rent') {
+            $rentStmt = $pdo->prepare("
+                SELECT p.id, 'rent' AS source_type, p.amount, p.payment_method,
+                       p.admin_name, p.notes, p.created_at,
+                       u.full_name AS client_name,
+                       IF(p.source = 'deduction', 'Оренда (утримано з виплати)', 'Оренда тренера') AS description
+                FROM trainer_rent_payments p
+                JOIN club_trainers ct ON ct.id = p.trainer_id
+                JOIN sys_users u ON u.id = ct.user_id
+                WHERE p.club_id = ? AND DATE(p.created_at) BETWEEN ? AND ?
+                ORDER BY p.created_at DESC
+                LIMIT ? OFFSET ?
+            ");
+            $rentStmt->execute([$clubId, $dateFrom, $dateTo, $perPage, $offset]);
+            $rentIncome = $rentStmt->fetchAll();
+        } else {
+            $rentIncome = [];
+        }
+
         // Об'єднуємо і сортуємо
-        $all = array_merge($invoicePayments, $productSales);
+        $all = array_merge($invoicePayments, $productSales, $rentIncome);
         usort($all, fn($a, $b) => strcmp($b['created_at'], $a['created_at']));
         $all = array_slice($all, 0, $perPage);
 

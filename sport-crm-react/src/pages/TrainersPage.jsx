@@ -10,6 +10,7 @@ import {
   getTrainerEarnings, payTrainerEarning, getTrainerRent, saveTrainerRent, deleteTrainerRent,
   getTrainerSummary, getTrainerUsers,
   getMyTrainerProfile, getMyTrainerEarnings, getMyTrainerSummary,
+  payTrainerRent, getTrainerPayouts, reverseTrainerPayout, reverseTrainerRentPayment,
 } from '../api/trainers';
 import { formatMoney, formatDate, localToday, getInitials } from '../utils/format';
 import './TrainersPage.css';
@@ -19,6 +20,8 @@ const TRIGGER_LABELS = { on_sale: 'При продажу', on_each_visit: 'Пі�
 const STATUS_VARIANT = { locked: 'inactive', available: 'active', partial: 'pending', paid: 'active' };
 const STATUS_ICON = { locked: '🔒', available: '✅', partial: '⏳', paid: '💚' };
 const STATUS_LABEL = { locked: 'Заблок.', available: 'Доступно', partial: 'Частково', paid: 'Виплачено' };
+const RENT_STATUS = { pending: ['pending', 'Очікує'], partial: ['pending', 'Частково'], paid: ['active', 'Оплачено'] };
+const RENT_METHOD_LABEL = { cash: 'готівка', card: 'картка', transfer: 'на рахунок' };
 const WORK_TYPE_VARIANT = { employee: 'info', rent: 'pending', both: 'active' };
 const WORK_TYPE_LABEL = { employee: 'Найманий', rent: 'Орендар', both: 'Найм + Оренда' };
 
@@ -39,10 +42,16 @@ function SummaryCards({ s, idPrefix }) {
       <div className="tr-sum-card highlight"><div className="tr-sum-label">До виплати</div><div className="tr-sum-value positive">{formatMoney(toPayOut)}</div></div>
       <div className="tr-sum-card"><div className="tr-sum-label">Виплачено</div><div className="tr-sum-value">{formatMoney(s.total_paid)}</div></div>
       <div className="tr-sum-card"><div className="tr-sum-label">🔒 Заблоковано</div><div className="tr-sum-value" style={{ fontSize: 14 }}>{s.cnt_locked || 0} нарахувань</div></div>
-      {parseFloat(s.rent_pending || 0) > 0 && (
+      {parseFloat(s.rent_deduction || 0) > 0 && (
         <div className="tr-sum-card" style={{ borderColor: 'var(--warning)' }}>
-          <div className="tr-sum-label">🏠 Оренда (борг)</div>
-          <div className="tr-sum-value" style={{ color: 'var(--warning)' }}>{formatMoney(s.rent_pending)}</div>
+          <div className="tr-sum-label">🏠 Оренда — утримається з виплат</div>
+          <div className="tr-sum-value" style={{ color: 'var(--warning)' }}>{formatMoney(s.rent_deduction)}</div>
+        </div>
+      )}
+      {parseFloat(s.rent_manual || 0) > 0 && (
+        <div className="tr-sum-card" style={{ borderColor: 'var(--warning)' }}>
+          <div className="tr-sum-label">🏠 Оренда — борг тренера</div>
+          <div className="tr-sum-value" style={{ color: 'var(--warning)' }}>{formatMoney(s.rent_manual)}</div>
         </div>
       )}
     </div>
@@ -75,6 +84,9 @@ export default function TrainersPage() {
   const [trainerModal, setTrainerModal] = useState(null);
   const [payModal, setPayModal] = useState(null);
   const [rentModal, setRentModal] = useState(null);
+  const [rentPay, setRentPay] = useState(null);     // { rent, amount, method, submitting, error }
+  const [payouts, setPayouts] = useState(null);     // { payouts, rent_payments }
+  const [storno, setStorno] = useState(null);       // { kind: 'payout'|'rent', id, label, reason, submitting, error }
 
   const [profileForm, setProfileForm] = useState(null);
   const [profileSaved, setProfileSaved] = useState(false);
@@ -145,9 +157,44 @@ export default function TrainersPage() {
     setRent(res.rent || []);
   }
 
+  async function reloadPayouts() {
+    const res = await getTrainerPayouts(selectedId);
+    setPayouts(res.success ? res : { payouts: [], rent_payments: [] });
+  }
+
   function switchDetailTab(tab) {
     setDetailTab(tab);
-    if (tab === 'rent') reloadRent();
+    if (tab === 'rent') { reloadRent(); reloadPayouts(); }
+    if (tab === 'payouts') reloadPayouts();
+  }
+
+  // ── Оплата оренди тренером ("Оплачено") ─────────────────────
+  function openRentPay(r) {
+    const left = Math.round((parseFloat(r.amount) - parseFloat(r.paid_amount || 0)) * 100) / 100;
+    setRentPay({ rent: r, left, amount: String(left), method: 'cash', submitting: false, error: '' });
+  }
+  async function submitRentPay() {
+    const amount = parseFloat(rentPay.amount);
+    if (!amount || amount <= 0 || amount > rentPay.left + 0.001) { setRentPay({ ...rentPay, error: `Сума від 0 до ${rentPay.left} грн` }); return; }
+    setRentPay({ ...rentPay, submitting: true, error: '' });
+    const res = await payTrainerRent({ rent_id: rentPay.rent.id, amount, payment_method: rentPay.method });
+    if (!res.success) { setRentPay({ ...rentPay, submitting: false, error: res.error }); return; }
+    toast(res.message, 'success');
+    setRentPay(null);
+    reloadRent(); reloadPayouts(); reloadSummary();
+  }
+
+  // ── Сторно (лише власник) ───────────────────────────────────
+  async function submitStorno() {
+    if (!storno.reason.trim()) { setStorno({ ...storno, error: 'Вкажіть причину' }); return; }
+    setStorno({ ...storno, submitting: true, error: '' });
+    const res = storno.kind === 'payout'
+      ? await reverseTrainerPayout(storno.id, storno.reason.trim())
+      : await reverseTrainerRentPayment(storno.id, storno.reason.trim());
+    if (!res.success) { setStorno({ ...storno, submitting: false, error: res.error }); return; }
+    toast('Сторно проведено', 'success');
+    setStorno(null);
+    reloadPayouts(); reloadRent(); reloadSummary(); reloadEarnings(selectedId, earnStatus);
   }
 
   async function reloadSummary() {
@@ -197,7 +244,7 @@ export default function TrainersPage() {
   // ── Виплата ─────────────────────────────────────────────────
   function openPayModal(e) {
     const canPay = parseFloat(e.available_amount) - parseFloat(e.paid_amount);
-    setPayModal({ earningId: e.id, max: canPay, clientName: e.client_name || '', amount: String(canPay), paymentMethod: 'cash', error: '' });
+    setPayModal({ earningId: e.id, max: canPay, clientName: e.client_name || '', amount: String(canPay), paymentMethod: 'cash', rentDeduction: parseFloat(summary?.rent_deduction || 0), error: '' });
   }
 
   async function confirmPay() {
@@ -206,7 +253,7 @@ export default function TrainersPage() {
     if (amount > payModal.max) { setPayModal({ ...payModal, error: `Максимум ${payModal.max} грн` }); return; }
     const res = await payTrainerEarning(payModal.earningId, amount, payModal.paymentMethod);
     if (!res.success) { setPayModal({ ...payModal, error: res.error }); return; }
-    toast('Виплату зафіксовано', 'success');
+    toast(res.message || 'Виплату зафіксовано', 'success');
     setPayModal(null);
     reloadEarnings(selectedId, earnStatus);
     reloadSummary();
@@ -499,6 +546,7 @@ export default function TrainersPage() {
 
           <div className="tr-detail-tabs">
             <button className={`tr-detail-tab ${detailTab === 'earnings' ? 'active' : ''}`} onClick={() => switchDetailTab('earnings')}>💰 Нарахування</button>
+            <button className={`tr-detail-tab ${detailTab === 'payouts' ? 'active' : ''}`} onClick={() => switchDetailTab('payouts')}>💸 Виплати</button>
             <button className={`tr-detail-tab ${detailTab === 'rent' ? 'active' : ''}`} onClick={() => switchDetailTab('rent')}>🏠 Оренда</button>
             <button className={`tr-detail-tab ${detailTab === 'profile' ? 'active' : ''}`} onClick={() => switchDetailTab('profile')}>⚙ Налаштування</button>
           </div>
@@ -578,18 +626,22 @@ export default function TrainersPage() {
               <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
                 <div className="table-wrap tr-rent-desktop">
                   <table>
-                    <thead><tr><th>Тип</th><th>Сума</th><th>Період</th><th>Статус</th><th>Нотатки</th><th></th></tr></thead>
+                    <thead><tr><th>Тип</th><th>Сума</th><th>Сплачено</th><th>Період</th><th>Статус</th><th>Нотатки</th><th></th></tr></thead>
                     <tbody>
-                      {rentLoading && <tr><td colSpan={6}><div className="loader"><span className="spinner" /></div></td></tr>}
-                      {!rentLoading && rent.length === 0 && <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>Записів немає</td></tr>}
+                      {rentLoading && <tr><td colSpan={7}><div className="loader"><span className="spinner" /></div></td></tr>}
+                      {!rentLoading && rent.length === 0 && <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>Записів немає</td></tr>}
                       {!rentLoading && rent.map((r) => (
                         <tr key={r.id}>
                           <td>{r.rent_type === 'manual' ? 'Тренер платить' : 'З заробітку'}</td>
                           <td><strong>{formatMoney(r.amount)}</strong></td>
+                          <td>{formatMoney(r.paid_amount || 0)}</td>
                           <td style={{ fontSize: 13 }}>{formatDate(r.period_start)} — {formatDate(r.period_end)}</td>
-                          <td><Badge variant={r.status === 'paid' ? 'active' : 'pending'}>{r.status === 'paid' ? 'Оплачено' : 'Очікує'}</Badge></td>
+                          <td><Badge variant={RENT_STATUS[r.status]?.[0] || 'pending'}>{RENT_STATUS[r.status]?.[1] || r.status}</Badge></td>
                           <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{r.notes || '—'}</td>
-                          <td><button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => handleDeleteRent(r.id)}>🗑</button></td>
+                          <td style={{ whiteSpace: 'nowrap' }}>
+                            {r.rent_type === 'manual' && r.status !== 'paid' && <button className="btn btn-ghost btn-sm" style={{ color: 'var(--success)' }} onClick={() => openRentPay(r)}>Оплачено</button>}
+                            {parseFloat(r.paid_amount || 0) === 0 && <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => handleDeleteRent(r.id)}>🗑</button>}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -603,11 +655,13 @@ export default function TrainersPage() {
                     <div className="mobile-record-card" key={r.id} style={{ cursor: 'default' }}>
                       <div className="mrc-top">
                         <span className="mrc-title">{r.rent_type === 'manual' ? 'Тренер платить' : 'З заробітку'}</span>
-                        <button type="button" className="mrc-menu-btn" aria-label="Видалити" style={{ color: 'var(--danger)' }} onClick={() => handleDeleteRent(r.id)}>🗑</button>
+                        {r.rent_type === 'manual' && r.status !== 'paid'
+                          ? <button type="button" className="mrc-menu-btn" aria-label="Оплачено" style={{ color: 'var(--success)' }} onClick={() => openRentPay(r)}>💵</button>
+                          : parseFloat(r.paid_amount || 0) === 0 && <button type="button" className="mrc-menu-btn" aria-label="Видалити" style={{ color: 'var(--danger)' }} onClick={() => handleDeleteRent(r.id)}>🗑</button>}
                       </div>
                       <div className="mrc-sub">
                         <span className="mrc-meta">
-                          <Badge variant={r.status === 'paid' ? 'active' : 'pending'}>{r.status === 'paid' ? 'Оплачено' : 'Очікує'}</Badge>
+                          <Badge variant={RENT_STATUS[r.status]?.[0] || 'pending'}>{RENT_STATUS[r.status]?.[1] || r.status}</Badge>
                           <span className="mrc-dot">•</span>
                           {formatDate(r.period_start)} — {formatDate(r.period_end)}
                         </span>
@@ -618,6 +672,46 @@ export default function TrainersPage() {
                 </div>
               </div>
             </>
+          )}
+
+          {detailTab === 'rent' && payouts && payouts.rent_payments.length > 0 && (
+            <div className="card" style={{ marginTop: 12 }}>
+              <div style={{ fontWeight: 600, marginBottom: 8 }}>Оплати оренди</div>
+              {payouts.rent_payments.map((p) => (
+                <div key={p.id} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: 13, flexWrap: 'wrap' }}>
+                  <span style={{ minWidth: 90 }}>{formatDate(p.created_at)}</span>
+                  <strong>{formatMoney(p.amount)}</strong>
+                  <span style={{ color: 'var(--text-secondary)' }}>{p.source === 'deduction' ? 'утримано з виплати' : RENT_METHOD_LABEL[p.payment_method] || p.payment_method}</span>
+                  <span style={{ color: 'var(--text-muted)', flex: 1 }}>{p.admin_name || ''}</span>
+                  {isOwner && p.source === 'manual' && (
+                    <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => setStorno({ kind: 'rent', id: p.id, label: `оплату оренди ${formatMoney(p.amount)} від ${formatDate(p.created_at)}`, reason: '', error: '' })}>Сторно</button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {detailTab === 'payouts' && (
+            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+              {!payouts && <div className="loader"><span className="spinner" /></div>}
+              {payouts && payouts.payouts.length === 0 && <div className="empty-state"><p>Виплат ще не було</p></div>}
+              {payouts && payouts.payouts.map((p) => {
+                const ded = parseFloat(p.rent_deducted || 0);
+                return (
+                  <div key={p.id} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '10px 14px', borderBottom: '1px solid var(--border)', fontSize: 13, flexWrap: 'wrap' }}>
+                    <span style={{ minWidth: 90 }}>{formatDate(p.expense_date)}</span>
+                    <div style={{ flex: 1, minWidth: 160 }}>
+                      <strong>{formatMoney(p.amount)}</strong> · {p.payment_method === 'cash' ? 'готівка' : 'картка'}
+                      {ded > 0 && <span style={{ color: 'var(--warning)' }}> · утримано оренду {formatMoney(ded)} → видано {formatMoney(parseFloat(p.amount) - ded)}</span>}
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{p.client_name || '—'} · {p.admin_name || ''}</div>
+                    </div>
+                    {isOwner && (
+                      <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => setStorno({ kind: 'payout', id: p.id, label: `виплату ${formatMoney(p.amount)} від ${formatDate(p.expense_date)}`, reason: '', error: '' })}>Сторно</button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           )}
 
           {detailTab === 'profile' && profileForm && (
@@ -845,6 +939,16 @@ export default function TrainersPage() {
                 <option value="card">Картка</option>
               </select>
             </FormGroup>
+            {payModal.rentDeduction > 0 && (() => {
+              const gross = parseFloat(payModal.amount) || 0;
+              const ded = Math.min(gross, payModal.rentDeduction);
+              return (
+                <div className="alert" style={{ fontSize: 13 }}>
+                  🏠 Утримається оренда: <strong>{formatMoney(ded)}</strong><br />
+                  Видати тренеру: <strong>{formatMoney(gross - ded)}</strong>
+                </div>
+              );
+            })()}
           </>
         )}
       </Modal>
@@ -879,6 +983,52 @@ export default function TrainersPage() {
             </div>
             <FormGroup label="Нотатки">
               <input type="text" placeholder="Необов'язково" value={rentModal.notes} onChange={(e) => setRentModal({ ...rentModal, notes: e.target.value })} />
+            </FormGroup>
+          </>
+        )}
+      </Modal>
+
+      {/* Оплата оренди тренером */}
+      <Modal open={!!rentPay} onClose={() => setRentPay(null)} title="Оренду оплачено" size="sm" footer={
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button className="btn btn-primary" disabled={rentPay?.submitting} onClick={submitRentPay}>Зарахувати</button>
+          <button className="btn btn-ghost" onClick={() => setRentPay(null)}>Скасувати</button>
+        </div>
+      }>
+        {rentPay && (
+          <>
+            {rentPay.error && <div className="alert alert-error">{rentPay.error}</div>}
+            <div style={{ fontSize: 13, marginBottom: 12 }}>Залишок оренди: <strong>{formatMoney(rentPay.left)}</strong></div>
+            <FormGroup label="Сума (грн)">
+              <input type="number" min="0.01" step="0.01" value={rentPay.amount} onChange={(e) => setRentPay({ ...rentPay, amount: e.target.value })} />
+            </FormGroup>
+            <FormGroup label="Спосіб оплати">
+              <select value={rentPay.method} onChange={(e) => setRentPay({ ...rentPay, method: e.target.value })}>
+                <option value="cash">Готівка (прихід у касу)</option>
+                <option value="card">Картка</option>
+                <option value="transfer">На рахунок</option>
+              </select>
+            </FormGroup>
+          </>
+        )}
+      </Modal>
+
+      {/* Сторно */}
+      <Modal open={!!storno} onClose={() => setStorno(null)} title="Сторно" size="sm" footer={
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button className="btn btn-danger" disabled={storno?.submitting} onClick={submitStorno}>Провести сторно</button>
+          <button className="btn btn-ghost" onClick={() => setStorno(null)}>Відмінити</button>
+        </div>
+      }>
+        {storno && (
+          <>
+            {storno.error && <div className="alert alert-error">{storno.error}</div>}
+            <p style={{ fontSize: 13, marginTop: 0 }}>
+              Скасувати {storno.label}? Гроші повернуться в касу / облік, сума знову стане «до виплати»
+              {storno.kind === 'payout' ? ', утримана з цієї виплати оренда знову стане боргом' : ''}.
+            </p>
+            <FormGroup label="Причина *">
+              <textarea rows="2" placeholder="напр. помилково обрано не того тренера" value={storno.reason} onChange={(e) => setStorno({ ...storno, reason: e.target.value, error: '' })} />
             </FormGroup>
           </>
         )}

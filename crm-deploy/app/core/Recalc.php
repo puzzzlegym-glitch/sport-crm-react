@@ -126,11 +126,24 @@ class Recalc
      * якої зміни client_invoices.status/visits_used/end_date.
      */
     /**
-     * Масове розблокування нарахувань тренерам, чиї абонементи вже завершились
-     * (минула дата кінця / вичерпано відвідування / скасовано), але абонемент
-     * після цього ніхто не змінював — unlockInvoiceTrainerEarnings() викликається
-     * лише при зміні абонемента, тож без цього нарахування 'on_end_date' лишались
-     * 'locked' назавжди. Ідемпотентно; викликати на початку trainers_api.php.
+     * Правило нарахувань тренеру: гроші стають доступними лише коли абонемент
+     * клієнта ПОВНІСТЮ ОПЛАЧЕНИЙ і заняття списане (нарахування створюється
+     * саме при списанні відвідування). Далі — тригер тарифу:
+     *   on_sale / on_each_visit — одразу (після оплати);
+     *   on_visits_done / on_end_date — після завершення абонемента.
+     */
+    private const PAID_SQL = "(ci.paid_amount >= ci.price - 0.01)";
+    private const COMPLETED_SQL = "(ci.end_date < CURDATE() OR ci.status IN ('expired','cancelled')
+                                   OR (ci.visits_total IS NOT NULL AND ci.visits_used >= ci.visits_total))";
+    private const RELEASE_SET = "te.available_amount = te.amount,
+                te.status = CASE WHEN te.paid_amount >= te.amount THEN 'paid'
+                                 WHEN te.paid_amount > 0 THEN 'partial' ELSE 'available' END,
+                te.available_at = NOW(), te.updated_at = NOW()";
+
+    /**
+     * Масове розблокування для клубу: оплачені абонементи, чий тригер уже настав,
+     * але абонемент після цього ніхто не змінював (unlockInvoiceTrainerEarnings
+     * викликається лише при зміні абонемента). Ідемпотентно; на початку trainers_api.php.
      */
     public static function unlockExpiredTrainerEarnings(PDO $pdo, int $clubId): void
     {
@@ -138,62 +151,52 @@ class Recalc
             UPDATE trainer_earnings te
             JOIN club_trainers ct ON ct.id = te.trainer_id
             JOIN client_invoices ci ON ci.id = te.invoice_id
-            SET te.available_amount = te.amount,
-                te.status = CASE
-                    WHEN te.paid_amount >= te.amount THEN 'paid'
-                    WHEN te.paid_amount > 0          THEN 'partial'
-                    ELSE 'available'
-                END,
-                te.available_at = NOW(),
-                te.updated_at   = NOW()
-            WHERE ct.club_id = ?
-              AND te.status = 'locked'
-              AND te.release_trigger IN ('on_visits_done', 'on_end_date')
-              AND (ci.end_date < CURDATE()
-                   OR ci.status IN ('expired', 'cancelled')
-                   OR (ci.visits_total IS NOT NULL AND ci.visits_used >= ci.visits_total))
+            SET " . self::RELEASE_SET . "
+            WHERE ct.club_id = ? AND te.status = 'locked' AND " . self::PAID_SQL . "
+              AND (te.release_trigger IN ('on_sale','on_each_visit')
+                   OR (te.release_trigger IN ('on_visits_done','on_end_date') AND " . self::COMPLETED_SQL . "))
         ")->execute([$clubId]);
     }
 
     public static function unlockInvoiceTrainerEarnings(PDO $pdo, int $invoiceId): void
     {
-        $row = $pdo->prepare("SELECT status, visits_total, visits_used, end_date FROM client_invoices WHERE id = ?");
+        $row = $pdo->prepare("SELECT club_id, paid_amount, price FROM client_invoices WHERE id = ?");
         $row->execute([$invoiceId]);
-        $ci = $row->fetch();
-        if (!$ci) return;
+        $inv = $row->fetch();
+        if (!$inv) return;
 
-        $completed = in_array($ci['status'], ['expired', 'cancelled'], true)
-            || ($ci['visits_total'] !== null && (int)$ci['visits_used'] >= (int)$ci['visits_total'])
-            || ($ci['status'] === 'active' && $ci['end_date'] < date('Y-m-d'));
-
-        if ($completed) {
+        $paid = (float)$inv['paid_amount'] >= (float)$inv['price'] - 0.01;
+        if ($paid) {
             $pdo->prepare("
-                UPDATE trainer_earnings SET
-                    available_amount = amount,
-                    status = CASE
-                        WHEN paid_amount >= amount THEN 'paid'
-                        WHEN paid_amount > 0       THEN 'partial'
-                        ELSE 'available'
-                    END,
-                    available_at = NOW(),
-                    updated_at   = NOW()
-                WHERE invoice_id = ?
-                  AND release_trigger IN ('on_visits_done', 'on_end_date')
-                  AND status NOT IN ('paid')
+                UPDATE trainer_earnings te
+                JOIN client_invoices ci ON ci.id = te.invoice_id
+                SET " . self::RELEASE_SET . "
+                WHERE te.invoice_id = ? AND te.status = 'locked'
+                  AND (te.release_trigger IN ('on_sale','on_each_visit')
+                       OR (te.release_trigger IN ('on_visits_done','on_end_date') AND " . self::COMPLETED_SQL . "))
+            ")->execute([$invoiceId]);
+        } else {
+            // Оплату зменшили/видалили — ще не виплачене нарахування знову блокується
+            $pdo->prepare("
+                UPDATE trainer_earnings SET available_amount = 0, status = 'locked', available_at = NULL, updated_at = NOW()
+                WHERE invoice_id = ? AND source = 'visit' AND status = 'available' AND paid_amount = 0
             ")->execute([$invoiceId]);
         }
 
-        if ($ci['status'] === 'active') {
-            $pdo->prepare("
-                UPDATE trainer_earnings SET
-                    available_amount = amount,
-                    status       = CASE WHEN paid_amount >= amount THEN 'paid' ELSE 'available' END,
-                    available_at = NOW(),
-                    updated_at   = NOW()
-                WHERE invoice_id    = ?
-                  AND release_trigger = 'on_sale'
-                  AND status = 'locked'
-            ")->execute([$invoiceId]);
+        // Групові заняття, де цей клієнт був присутній, — перерахувати нарахування тренеру
+        $gs = $pdo->prepare("
+            SELECT DISTINCT gsc.session_id FROM group_session_clients gsc
+            JOIN group_sessions gs ON gs.id = gsc.session_id
+            WHERE gsc.invoice_id = ? AND gsc.status = 'attended' AND gs.status = 'completed'
+        ");
+        try {
+            $gs->execute([$invoiceId]);
+            foreach ($gs->fetchAll(PDO::FETCH_COLUMN) as $sid) {
+                Attendance::recalcGroupSessionEarning($pdo, (int)$inv['club_id'], (int)$sid);
+            }
+        } catch (PDOException $e) {
+            // group_sessions ще не створено (стара БД) — пропускаємо
+            if ($e->getCode() !== '42S02') throw $e;
         }
     }
 

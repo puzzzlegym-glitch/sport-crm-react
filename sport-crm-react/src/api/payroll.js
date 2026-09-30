@@ -9,3 +9,7 @@ export const saveSalarySettings = (payload) => api('save_settings', payload, 'pa
 export const calcPayrollPreview = (payload) => api('calc_preview', payload, 'payroll');
 export const createPayroll = (payload) => api('create_payroll', payload, 'payroll');
 export const payPayroll = (payload) => api('pay_payroll', payload, 'payroll');
+
+// Історія виплат за нарахуванням і сторно (лише власник)
+export const getPayrollPayouts = (payrollId) => api('get_payouts', { payroll_id: payrollId }, 'payroll');
+export const reversePayrollPayout = (id, reason) => api('reverse_payout', { id, reason }, 'payroll');

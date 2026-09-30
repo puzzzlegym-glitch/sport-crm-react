@@ -34,7 +34,7 @@ $pdo    = Database::get();
 $clubId = (int)($input['club_id'] ?? $_GET['club_id'] ?? $sess['active_club_id'] ?? 0);
 if (!$clubId) Response::error('Не обрано клуб', 400);
 
-Auth::requireClubAccess($sess, $clubId, 30);
+$access = Auth::requireClubAccess($sess, $clubId, 30);
 if (!Auth::can($sess, $clubId, 'users.manage')) Response::forbidden();
 
 function assertUserInClub(PDO $pdo, int $userId, int $clubId): void {
@@ -280,6 +280,34 @@ case 'pay_payroll':
     Recalc::cashflowSyncExpense($pdo, (int)$pdo->lastInsertId());
     $pdo->commit();
     Response::ok(['paid_amount' => $newPaid, 'status' => $newStatus], 'Виплату зафіксовано');
+
+// ════ ІСТОРІЯ ВИПЛАТ ЗА НАРАХУВАННЯМ ═══════════════════════════
+case 'get_payouts':
+    $payrollId = (int)($input['payroll_id'] ?? 0);
+    $st = $pdo->prepare("
+        SELECT id, amount, payment_method, expense_date, admin_name, description
+        FROM club_expenses WHERE club_id=? AND source='staff_payroll' AND source_id=?
+        ORDER BY id DESC
+    ");
+    $st->execute([$clubId, $payrollId]);
+    Response::ok(['payouts' => $st->fetchAll()]);
+
+// ════ СТОРНО ВИПЛАТИ (лише власник, з причиною) ═══════════════
+case 'reverse_payout':
+    if (!Auth::isOwner($sess, $access)) Response::forbidden('Сторно — лише власник клубу');
+    $expenseId = (int)($input['id'] ?? 0);
+    $reason    = trim($input['reason'] ?? '');
+    if (!$expenseId) Response::error('Вкажіть id');
+    if ($reason === '') Response::error('Вкажіть причину сторно');
+    $pdo->beginTransaction();
+    try {
+        Payouts::reverseStaffPayout($pdo, $clubId, $expenseId, $reason, $sess);
+        $pdo->commit();
+    } catch (RuntimeException $ex) {
+        $pdo->rollBack();
+        Response::error($ex->getMessage());
+    }
+    Response::ok([], 'Сторно проведено');
 
 default:
     Response::error('Невідома дія', 400);
