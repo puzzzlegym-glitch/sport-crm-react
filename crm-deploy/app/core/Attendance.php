@@ -110,6 +110,7 @@ class Attendance
             $cntStmt = $pdo->prepare("
                 SELECT COUNT(DISTINCT client_id) FROM client_invoices
                 WHERE trainer_id = ? AND club_id = ? AND status = 'active'
+                  AND start_date <= CURDATE() AND end_date >= CURDATE()
             ");
             $cntStmt->execute([$trainerId, $clubId]);
             $activeClients = (int)$cntStmt->fetchColumn();

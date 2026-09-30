@@ -519,13 +519,14 @@ try { switch ($action) {
             if ($earning) {
                 // Сторно вже виплачених коштів: видаляємо захищені системні
                 // витрати, породжені цим нарахуванням — гроші "повертаються".
-                $expStmt = $pdo->prepare("SELECT id FROM club_expenses WHERE source='trainer_payout' AND source_id=? LIMIT 1");
+                // Часткових виплат може бути кілька — прибираємо всі разом з рядками каси
+                $expStmt = $pdo->prepare("SELECT id FROM club_expenses WHERE source='trainer_payout' AND source_id=?");
                 $expStmt->execute([$earning['id']]);
-                $expIdToRemove = $expStmt->fetchColumn();
+                $expIdsToRemove = $expStmt->fetchAll(PDO::FETCH_COLUMN);
 
                 $pdo->prepare("DELETE FROM club_expenses WHERE source='trainer_payout' AND source_id=?")
                     ->execute([$earning['id']]);
-                if ($expIdToRemove) Recalc::cashflowSyncExpense($pdo, (int)$expIdToRemove);
+                foreach ($expIdsToRemove as $expId) Recalc::cashflowSyncExpense($pdo, (int)$expId);
                 $pdo->prepare("DELETE FROM trainer_earnings WHERE id=?")->execute([$earning['id']]);
             }
             $invIdStmt = $pdo->prepare("SELECT invoice_id FROM visits WHERE id=? AND club_id=?");

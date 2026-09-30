@@ -66,6 +66,16 @@ if ($clubId) {
 
 $isManager = $level >= 50;
 
+// Нарахування за завершені абонементи — доступні до виплати (див. Recalc)
+Recalc::unlockExpiredTrainerEarnings($pdo, $clubId);
+
+// Тренер має належати поточному клубу (інакше за id можна переглянути чужого)
+function assertTrainerInClub(PDO $pdo, int $trainerId, int $clubId): void {
+    $s = $pdo->prepare("SELECT 1 FROM club_trainers WHERE id=? AND club_id=? LIMIT 1");
+    $s->execute([$trainerId, $clubId]);
+    if (!$s->fetchColumn()) Response::error('Тренера не знайдено', 404);
+}
+
 // Допоміжна: знайти club_trainers.id поточного юзера
 function myTrainerId(PDO $pdo, int $clubId, int $userId): int {
     $s = $pdo->prepare("SELECT id FROM club_trainers WHERE club_id=? AND user_id=? LIMIT 1");
@@ -329,6 +339,7 @@ case 'get_earnings':
         Response::forbidden();
     }
     if (!$trainerId) Response::error('Вкажіть trainer_id');
+    assertTrainerInClub($pdo, $trainerId, $clubId);
 
     $status = trim($input['status'] ?? $_GET['status'] ?? '');
     $where  = ['te.trainer_id = ?'];
@@ -364,28 +375,42 @@ case 'pay_earning':
     if (!$earnId)    Response::error('Вкажіть earning_id');
     if ($payAmount <= 0) Response::error('Сума виплати має бути > 0');
 
-    $row = $pdo->prepare("
-        SELECT te.id, te.amount, te.available_amount, te.paid_amount, te.status,
-               te.trainer_id, u.full_name AS trainer_name
-        FROM trainer_earnings te
-        JOIN club_trainers ct ON ct.id = te.trainer_id
-        JOIN sys_users u ON u.id = ct.user_id
-        WHERE te.id=? LIMIT 1
-    ");
-    $row->execute([$earnId]);
-    $e = $row->fetch();
-    if (!$e) Response::error('Нарахування не знайдено', 404);
-    if ($e['status'] === 'locked') Response::error('Нарахування ще не доступне до виплати');
-    if ($e['status'] === 'paid')   Response::error('Нарахування вже виплачено');
-
-    $canPay = round($e['available_amount'] - $e['paid_amount'], 2);
-    if ($payAmount > $canPay) Response::error("Максимум до виплати: {$canPay} грн");
-
-    $newPaid   = round($e['paid_amount'] + $payAmount, 2);
-    $newStatus = $newPaid >= $e['amount'] ? 'paid' : 'partial';
+    // Готівкова виплата — у відкриту зміну каси (інакше звіт зміни її не бачить)
+    $shiftId = null;
+    if ($paymentMethod === 'cash') {
+        $sh = $pdo->prepare("SELECT id FROM cash_shifts WHERE club_id=? AND status='open' LIMIT 1");
+        $sh->execute([$clubId]);
+        $shiftId = (int)$sh->fetchColumn() ?: null;
+    }
 
     $pdo->beginTransaction();
     try {
+        // FOR UPDATE — два одночасні натискання "Виплатити" не проведуть виплату двічі;
+        // ct.club_id — лише нарахування свого клубу.
+        $row = $pdo->prepare("
+            SELECT te.id, te.amount, te.available_amount, te.paid_amount, te.status,
+                   te.trainer_id, u.full_name AS trainer_name
+            FROM trainer_earnings te
+            JOIN club_trainers ct ON ct.id = te.trainer_id
+            JOIN sys_users u ON u.id = ct.user_id
+            WHERE te.id=? AND ct.club_id=? LIMIT 1
+            FOR UPDATE
+        ");
+        $row->execute([$earnId, $clubId]);
+        $e = $row->fetch();
+        $err = null;
+        if (!$e)                           $err = 'Нарахування не знайдено';
+        elseif ($e['status'] === 'locked') $err = 'Нарахування ще не доступне до виплати';
+        elseif ($e['status'] === 'paid')   $err = 'Нарахування вже виплачено';
+        else {
+            $canPay = round($e['available_amount'] - $e['paid_amount'], 2);
+            if ($payAmount > $canPay) $err = "Максимум до виплати: {$canPay} грн";
+        }
+        if ($err) { $pdo->rollBack(); Response::error($err); }
+
+        $newPaid   = round($e['paid_amount'] + $payAmount, 2);
+        $newStatus = $newPaid >= $e['amount'] ? 'paid' : 'partial';
+
         $pdo->prepare("
             UPDATE trainer_earnings SET paid_amount=?, status=?, updated_at=NOW()
             WHERE id=?
@@ -397,13 +422,13 @@ case 'pay_earning':
         $pdo->prepare("
             INSERT INTO club_expenses
                 (club_id, category, description, amount,
-                 expense_date, payment_method,
+                 expense_date, payment_method, shift_id,
                  admin_id, admin_name, notes, source, source_id)
-            VALUES (?, 'Зарплата тренера', ?, ?, CURDATE(), ?, ?, ?, NULL, 'trainer_payout', ?)
+            VALUES (?, 'Зарплата тренера', ?, ?, CURDATE(), ?, ?, ?, ?, NULL, 'trainer_payout', ?)
         ")->execute([
             $clubId,
             "Виплата тренеру {$e['trainer_name']} (нарахування #{$earnId})",
-            $payAmount, $paymentMethod,
+            $payAmount, $paymentMethod, $shiftId,
             $sess['user_id'], $sess['full_name'] ?? null,
             $earnId,
         ]);
@@ -411,7 +436,7 @@ case 'pay_earning':
 
         $pdo->commit();
     } catch (Throwable $ex) {
-        $pdo->rollBack();
+        if ($pdo->inTransaction()) $pdo->rollBack();
         Response::serverError($ex->getMessage());
     }
 
@@ -424,6 +449,7 @@ case 'get_rent':
         Response::forbidden();
     }
     if (!$trainerId) Response::error('Вкажіть trainer_id');
+    assertTrainerInClub($pdo, $trainerId, $clubId);
 
     $stmt = $pdo->prepare("
         SELECT tr.*, u.full_name AS created_by_name
@@ -490,6 +516,7 @@ case 'get_summary':
         Response::forbidden();
     }
     if (!$trainerId) Response::error('Вкажіть trainer_id');
+    assertTrainerInClub($pdo, $trainerId, $clubId);
 
     $e2 = $pdo->prepare("
         SELECT

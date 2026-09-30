@@ -276,7 +276,7 @@ export default function UsersPage() {
   // ── Виплата ───────────────────────────────────────────────
   function openPayModal(row) {
     const maxPay = Math.round((row.total_amount - row.paid_amount) * 100) / 100;
-    setPayModal({ payrollId: row.id, total: row.total_amount, paid: row.paid_amount, maxPay, amount: maxPay, error: '', submitting: false });
+    setPayModal({ payrollId: row.id, total: row.total_amount, paid: row.paid_amount, maxPay, amount: maxPay, method: 'cash', error: '', submitting: false });
   }
 
   function setPayPercent(pct) {
@@ -288,7 +288,7 @@ export default function UsersPage() {
     if (!amount || amount <= 0) { setPayModal({ ...payModal, error: 'Введіть суму' }); return; }
     if (amount > payModal.maxPay) { setPayModal({ ...payModal, error: `Максимум: ${fmt(payModal.maxPay)}` }); return; }
     setPayModal({ ...payModal, submitting: true, error: '' });
-    const res = await payPayroll({ payroll_id: payModal.payrollId, amount });
+    const res = await payPayroll({ payroll_id: payModal.payrollId, amount, payment_method: payModal.method });
     if (!res.success) {
       setPayModal({ ...payModal, submitting: false, error: res.error || 'Помилка' });
       return;
@@ -684,6 +684,12 @@ export default function UsersPage() {
             </div>
             <FormGroup label="Сума виплати (грн)">
               <input type="number" min="0.01" step="0.01" placeholder="0.00" value={payModal.amount} onChange={(e) => setPayModal({ ...payModal, amount: e.target.value })} />
+            </FormGroup>
+            <FormGroup label="Спосіб виплати">
+              <select value={payModal.method} onChange={(e) => setPayModal({ ...payModal, method: e.target.value })}>
+                <option value="cash">Готівка (з каси)</option>
+                <option value="card">Картка / переказ (лише облік у Фінансах)</option>
+              </select>
             </FormGroup>
           </>
         )}

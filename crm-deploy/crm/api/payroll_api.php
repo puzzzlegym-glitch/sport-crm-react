@@ -15,6 +15,10 @@
  *
  * Усі %-компоненти і plan рахуються по admin_id конкретного співробітника, НЕ по клубу
  * в цілому — критично, коли на добу відкривається кілька змін різними адмінами.
+ * Повернені чеки (sale_orders.status='returned') у % від товарів не входять.
+ *
+ * Виплата (pay_payroll) створює захищену витрату club_expenses (source='staff_payroll'):
+ * готівка — зменшує касу (у відкриту зміну), картка — лише облік у Фінансах.
  */
 
 require_once dirname(__DIR__, 2) . '/app/bootstrap.php';
@@ -71,7 +75,13 @@ function calcComponents(PDO $pdo, int $clubId, int $userId, array $cfg, string $
     // усім з однієї спільної суми.
     $tovarSum = 0;
     if (($cfg['pct_tovar_on'] && $cfg['pct_tovar_value'] > 0) || $planOn) {
-        $s = $pdo->prepare("SELECT COALESCE(SUM(total_amount),0) FROM product_sales WHERE club_id=? AND admin_id=? AND DATE(created_at) BETWEEN ? AND ?");
+        $s = $pdo->prepare("
+            SELECT COALESCE(SUM(ps.total_amount),0)
+            FROM product_sales ps
+            LEFT JOIN sale_orders so ON so.id = ps.order_id
+            WHERE ps.club_id=? AND ps.admin_id=? AND DATE(ps.created_at) BETWEEN ? AND ?
+              AND (so.id IS NULL OR so.status <> 'returned')
+        ");
         $s->execute([$clubId, $userId, $d1, $d2]);
         $tovarSum = (float)$s->fetchColumn();
     }
@@ -223,25 +233,59 @@ case 'get_summary':
 case 'pay_payroll':
     $payrollId = (int)($input['payroll_id'] ?? 0);
     $amount    = round((float)($input['amount'] ?? 0), 2);
+    $method    = ($input['payment_method'] ?? 'cash') === 'card' ? 'card' : 'cash';
     if (!$payrollId) Response::error('Вкажіть payroll_id');
     if ($amount <= 0) Response::error('Сума має бути > 0');
-    $row = $pdo->prepare("SELECT * FROM staff_payroll WHERE id=? AND club_id=? LIMIT 1");
+
+    // Готівкова виплата — у відкриту зміну каси (інакше звіт зміни її не бачить)
+    $shiftId = null;
+    if ($method === 'cash') {
+        $sh = $pdo->prepare("SELECT id FROM cash_shifts WHERE club_id=? AND status='open' LIMIT 1");
+        $sh->execute([$clubId]);
+        $shiftId = (int)$sh->fetchColumn() ?: null;
+    }
+
+    $pdo->beginTransaction();
+    // FOR UPDATE — подвійне натискання "Виплатити" не проведе виплату двічі
+    $row = $pdo->prepare("
+        SELECT sp.*, u.full_name FROM staff_payroll sp JOIN sys_users u ON u.id = sp.user_id
+        WHERE sp.id=? AND sp.club_id=? LIMIT 1 FOR UPDATE
+    ");
     $row->execute([$payrollId, $clubId]);
     $p = $row->fetch();
-    if (!$p) Response::error('Нарахування не знайдено', 404);
-    if ($p['status'] === 'paid') Response::error('Вже виплачено');
-    $canPay = round((float)$p['total_amount'] - (float)$p['paid_amount'], 2);
-    if ($amount > $canPay) Response::error("Максимум до виплати: {$canPay} грн");
+    $err = null;
+    if (!$p)                          $err = 'Нарахування не знайдено';
+    elseif ($p['status'] === 'paid')  $err = 'Вже виплачено';
+    else {
+        $canPay = round((float)$p['total_amount'] - (float)$p['paid_amount'], 2);
+        if ($amount > $canPay) $err = "Максимум до виплати: {$canPay} грн";
+    }
+    if ($err) { $pdo->rollBack(); Response::error($err); }
+
     $newPaid   = round((float)$p['paid_amount'] + $amount, 2);
     $newStatus = $newPaid >= (float)$p['total_amount'] ? 'paid' : 'partial';
     $pdo->prepare("UPDATE staff_payroll SET paid_amount=?,status=?,updated_at=NOW() WHERE id=?")
         ->execute([$newPaid, $newStatus, $payrollId]);
+
+    // Захищений системний запис витрати (не редагується/не видаляється вручну, як trainer_payout)
+    $pdo->prepare("
+        INSERT INTO club_expenses
+            (club_id, category, description, amount, expense_date, payment_method, shift_id,
+             admin_id, admin_name, notes, source, source_id)
+        VALUES (?, 'Зарплата персоналу', ?, ?, CURDATE(), ?, ?, ?, ?, NULL, 'staff_payroll', ?)
+    ")->execute([
+        $clubId, "Зарплата {$p['full_name']} за {$p['period_month']}", $amount, $method, $shiftId,
+        $sess['user_id'], $sess['full_name'] ?? null, $payrollId,
+    ]);
+    Recalc::cashflowSyncExpense($pdo, (int)$pdo->lastInsertId());
+    $pdo->commit();
     Response::ok(['paid_amount' => $newPaid, 'status' => $newStatus], 'Виплату зафіксовано');
 
 default:
     Response::error('Невідома дія', 400);
 
 }} catch (Throwable $e) {
+    if ($pdo->inTransaction()) $pdo->rollBack();
     error_log('payroll_api: ' . $e->getMessage());
     Response::error('Помилка сервера', 500);
 }

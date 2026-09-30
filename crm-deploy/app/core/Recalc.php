@@ -125,6 +125,36 @@ class Recalc
      * виклик з тим самим станом нічого не змінює). Викликати після БУДЬ-
      * якої зміни client_invoices.status/visits_used/end_date.
      */
+    /**
+     * Масове розблокування нарахувань тренерам, чиї абонементи вже завершились
+     * (минула дата кінця / вичерпано відвідування / скасовано), але абонемент
+     * після цього ніхто не змінював — unlockInvoiceTrainerEarnings() викликається
+     * лише при зміні абонемента, тож без цього нарахування 'on_end_date' лишались
+     * 'locked' назавжди. Ідемпотентно; викликати на початку trainers_api.php.
+     */
+    public static function unlockExpiredTrainerEarnings(PDO $pdo, int $clubId): void
+    {
+        $pdo->prepare("
+            UPDATE trainer_earnings te
+            JOIN club_trainers ct ON ct.id = te.trainer_id
+            JOIN client_invoices ci ON ci.id = te.invoice_id
+            SET te.available_amount = te.amount,
+                te.status = CASE
+                    WHEN te.paid_amount >= te.amount THEN 'paid'
+                    WHEN te.paid_amount > 0          THEN 'partial'
+                    ELSE 'available'
+                END,
+                te.available_at = NOW(),
+                te.updated_at   = NOW()
+            WHERE ct.club_id = ?
+              AND te.status = 'locked'
+              AND te.release_trigger IN ('on_visits_done', 'on_end_date')
+              AND (ci.end_date < CURDATE()
+                   OR ci.status IN ('expired', 'cancelled')
+                   OR (ci.visits_total IS NOT NULL AND ci.visits_used >= ci.visits_total))
+        ")->execute([$clubId]);
+    }
+
     public static function unlockInvoiceTrainerEarnings(PDO $pdo, int $invoiceId): void
     {
         $row = $pdo->prepare("SELECT status, visits_total, visits_used, end_date FROM client_invoices WHERE id = ?");
